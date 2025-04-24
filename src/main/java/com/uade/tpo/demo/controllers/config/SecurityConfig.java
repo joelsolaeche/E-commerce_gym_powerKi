@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,15 +20,20 @@ public class SecurityConfig {
 
         private final JwtAuthenticationFilter jwtAuthFilter;
         private final AuthenticationProvider authenticationProvider;
+        
 
+        
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http
                                 .csrf(AbstractHttpConfigurer::disable)
-                                .authorizeHttpRequests(req -> req.requestMatchers("/api/v1/auth/**").permitAll()
-                                                .requestMatchers("/error/**").permitAll()
-                                                .anyRequest()
-                                                .authenticated())
+                                .authorizeHttpRequests(req -> req
+                                                .requestMatchers("/api/v1/auth/**", "/error/**").permitAll() // Público
+                                                .requestMatchers(HttpMethod.GET, "/categories/**", "/api/products/**").permitAll() // GET es público
+                                                .requestMatchers(HttpMethod.POST, "/categories").hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/auth/users/**").hasRole("ADMIN") // Solo ADMIN
+                                                .requestMatchers("/api/cart/**", "/api/orders/**").hasRole("USER") // Solo USER
+                                                .anyRequest().authenticated()) // Cualquier otra ruta requiere autenticación
                                 .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
                                 .authenticationProvider(authenticationProvider)
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

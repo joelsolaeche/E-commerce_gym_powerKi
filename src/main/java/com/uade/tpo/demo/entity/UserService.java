@@ -35,7 +35,6 @@ public class UserService {
     public User updateProfile(User userData) {
         User currentUser = getCurrentUser();
 
-        currentUser.setName(userData.getName());
         currentUser.setFirstName(userData.getFirstName());
         currentUser.setLastName(userData.getLastName());
         currentUser.setFechaNacimiento(userData.getFechaNacimiento());
