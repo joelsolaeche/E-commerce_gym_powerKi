@@ -59,6 +59,7 @@ public class ProductController {
                 product.setStock(productData.getStock());
                 product.setDescription(productData.getDescription());
                 product.setCategory(productData.getCategory());
+                product.setImageUrl(productData.getImageUrl());
                 return ResponseEntity.ok(productService.saveProduct(product)); // Cambiado para usar el servicio
             })
             .orElse(ResponseEntity.notFound().build());

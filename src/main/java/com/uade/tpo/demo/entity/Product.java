@@ -14,7 +14,7 @@ import lombok.Data;
 @Data
 @Entity
 public class Product {
-    @Id
+    @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -34,4 +34,7 @@ public class Product {
     @JoinColumn(name = "category_id", referencedColumnName = "id")
     @JsonBackReference
     private Category category;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 }
