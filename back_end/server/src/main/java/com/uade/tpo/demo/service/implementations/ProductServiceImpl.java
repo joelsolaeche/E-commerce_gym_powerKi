@@ -61,8 +61,19 @@ public class ProductServiceImpl implements ProductService {
         Optional.ofNullable(productDetails.getDescription()).ifPresent(product::setDescription);
         Optional.ofNullable(productDetails.getStockQuantity()).ifPresent(product::setStockQuantity);
         Optional.ofNullable(productDetails.getCategory()).ifPresent(product::setCategory);
+        
+        // Handle price updates
+        if (productDetails.getOriginalPrice() != null) {
+            product.setOriginalPrice(productDetails.getOriginalPrice());
+        }
+        
+        if (productDetails.getPrice() != null) {
+            product.setPrice(productDetails.getPrice());
+        }
     
-        if (productDetails.getDiscountPercentage() != BigDecimal.ZERO) {
+        // Apply discount if provided
+        if (productDetails.getDiscountPercentage() != null && 
+            productDetails.getDiscountPercentage().compareTo(BigDecimal.ZERO) != 0) {
             product.applyDiscount(productDetails.getDiscountPercentage());
         }
     

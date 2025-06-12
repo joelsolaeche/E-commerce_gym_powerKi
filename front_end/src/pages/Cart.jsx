@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { useUser } from '../context/UserContext'
 import { useReduxCart, useReduxProducts } from '../hooks'
+import { toast } from 'react-toastify'
 
 const Cart = ({ setCurrentPage }) => {
   const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart()
@@ -23,13 +24,13 @@ const Cart = ({ setCurrentPage }) => {
   const handleCheckout = () => {
     // Make sure we have a user first
     if (!user) {
-      alert('Debes iniciar sesión para realizar la compra')
+      toast.error('Debes iniciar sesión para realizar la compra')
       setCurrentPage('login')
       return
     }
     
     if (cart.length === 0) {
-      alert('Tu carrito está vacío')
+      toast.error('Tu carrito está vacío')
       return
     }
     
@@ -114,14 +115,8 @@ const Cart = ({ setCurrentPage }) => {
           await refetchProducts();
           console.log("Product data refreshed");
           
-          // Show a more prominent success message
-          const successMessage = `
-            ¡Compra realizada con éxito! 🎉
-            
-            Tu arsenal ha sido enviado y el stock ha sido actualizado.
-            Gracias por tu compra, guerrero!
-          `;
-          alert(successMessage);
+          // Show a success toast notification
+          toast.success('¡Compra realizada con éxito! 🎉');
           
           clearCart();
           setShowCheckoutModal(false);

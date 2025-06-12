@@ -8,10 +8,7 @@ const ProductModal = ({ product, onClose }) => {
   const handleAddToCart = () => {
     const cartItem = { ...product, stock: product.stockQuantity };
     if (addToCart(cartItem)) {
-      alert(`${product.name} agregado al carrito!`);
       onClose();
-    } else {
-      alert('Producto sin stock disponible');
     }
   };
 
@@ -48,13 +45,25 @@ const ProductModal = ({ product, onClose }) => {
                   {product.category?.description || ''}
                 </span>
                 <div className="flex flex-col">
-                  <p className="text-4xl lg:text-5xl font-bold text-yellow-400" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)' }}>
-                    ${product.price}
-                  </p>
-                  {product.discountPercentage > 0 && (
-                    <p className="text-lg text-gray-500 line-through mt-1">
-                      ${product.originalPrice}
+                  <div className="flex items-center gap-3">
+                    <p className="text-4xl lg:text-5xl font-bold text-yellow-400" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)' }}>
+                      ${product.price}
                     </p>
+                    {product.discountPercentage > 0 && (
+                      <span className="inline-flex px-3 py-1 text-base font-bold rounded-full bg-red-500 text-white animate-pulse shadow-lg">
+                        -{product.discountPercentage}% OFF
+                      </span>
+                    )}
+                  </div>
+                  {product.discountPercentage > 0 && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="text-lg text-gray-500 line-through">
+                        ${product.originalPrice}
+                      </p>
+                      <span className="text-sm text-green-600 font-bold">
+                        ¡Ahorras ${(product.originalPrice - product.price).toFixed(2)}!
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>

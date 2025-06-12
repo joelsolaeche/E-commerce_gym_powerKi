@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from 'react'
+import { toast } from 'react-toastify'
 
 const CartContext = createContext()
 
@@ -14,7 +15,10 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([])
 
   const addToCart = (product, quantity = 1) => {
-    if (product.stock === 0) return false
+    if (product.stock === 0) {
+      toast.error('Producto sin stock disponible')
+      return false
+    }
     
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id)
@@ -28,11 +32,18 @@ export const CartProvider = ({ children }) => {
       }
       return [...prevCart, { ...product, quantity }]
     })
+    toast.success(`${product.name} agregado al carrito!`)
     return true
   }
 
   const removeFromCart = (productId) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== productId))
+    setCart(prevCart => {
+      const itemToRemove = prevCart.find(item => item.id === productId)
+      if (itemToRemove) {
+        toast.info(`${itemToRemove.name} eliminado del carrito`)
+      }
+      return prevCart.filter(item => item.id !== productId)
+    })
   }
 
   const updateQuantity = (productId, quantity) => {
@@ -46,10 +57,12 @@ export const CartProvider = ({ children }) => {
         item.id === productId ? { ...item, quantity } : item
       )
     )
+    toast.info('Cantidad actualizada')
   }
 
   const clearCart = () => {
     setCart([])
+    toast.info('Carrito vaciado')
   }
 
   const getCartTotal = () => {

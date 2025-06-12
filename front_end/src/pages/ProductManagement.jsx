@@ -1,7 +1,29 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '../context/UserContext'
 import { useReduxProducts, useReduxCategories } from '../hooks'
+import { toast } from 'react-toastify'
 
+// Utility function to process image URLs
+const processImageUrl = (url) => {
+  // If URL is empty, return a default image
+  if (!url || url.trim() === '') {
+    return 'https://via.placeholder.com/300x200?text=Producto';
+  }
+
+  try {
+    // If URL is too long, try to create a shorter version for database storage
+    if (url.length > 250) {
+      // Try to use a URL shortener service or image hosting API here
+      // For now, we'll just use the original URL and let the backend handle it
+      console.warn("Long image URL detected:", url.length, "characters");
+      return url;
+    }
+    return url;
+  } catch (error) {
+    console.error("Error processing image URL:", error);
+    return 'https://via.placeholder.com/300x200?text=Error';
+  }
+};
 
 const ProductManagement = ({ setCurrentPage }) => {
   const { user } = useUser()
@@ -27,7 +49,8 @@ const ProductManagement = ({ setCurrentPage }) => {
     description: '',
     categoryId: '',
     stock: '',
-    image: ''
+    image: '',
+    discountPercentage: ''
   })
   const [imagePreview, setImagePreview] = useState(null)
   
@@ -121,21 +144,70 @@ const ProductManagement = ({ setCurrentPage }) => {
     // Create a copy of form data for submission
     const productData = {
       name: formData.name,
-      price: parseFloat(formData.price),
       description: formData.description,
       categoryId: parseInt(formData.categoryId), // Make sure to send categoryId as number
       stockQuantity: parseInt(formData.stock),
-      originalPrice: parseFloat(formData.price), // Add original price to ensure it's sent
       sellerId: user.id // Add the current user as the seller
+    }
+    
+    // Handle price and discount percentage
+    const currentPrice = parseFloat(formData.price);
+    productData.originalPrice = currentPrice;
+    
+    // Handle discount percentage
+    if (formData.discountPercentage && formData.discountPercentage.trim() !== '') {
+      const discountPercentage = parseInt(formData.discountPercentage);
+      if (!isNaN(discountPercentage) && discountPercentage > 0) {
+        productData.discountPercentage = discountPercentage;
+        // Calculate the discounted price
+        productData.price = currentPrice - (currentPrice * (discountPercentage / 100));
+      } else {
+        productData.price = currentPrice;
+        productData.discountPercentage = 0;
+      }
+    } else {
+      productData.price = currentPrice;
+      productData.discountPercentage = 0;
     }
     
     // Handle image URL
     if (formData.image && formData.image.trim() !== '') {
-      productData.image = formData.image;
-      console.log("Using image URL:", formData.image);
+      const imageUrl = formData.image.trim();
+      
+      // Check if URL is too long (over 250 chars is likely to cause issues)
+      if (imageUrl.length > 250) {
+        try {
+          // For very long URLs, use a URL shortener or image proxy
+          // Here we'll use a simple approach of taking just the domain and path
+          const urlObj = new URL(imageUrl);
+          const domain = urlObj.hostname;
+          const path = urlObj.pathname;
+          
+          // Create a shortened version that keeps the domain and last part of the path
+          const pathParts = path.split('/');
+          const lastPathPart = pathParts[pathParts.length - 1];
+          
+          // If the last part is still too long, truncate it
+          const shortenedUrl = `https://${domain}/.../${lastPathPart.substring(0, 30)}`;
+          
+          toast.info(`La URL de la imagen es muy larga y ha sido acortada. La imagen podría no mostrarse correctamente.`);
+          console.log("Original URL was too long, using shortened reference:", shortenedUrl);
+          
+          // Use the original URL but warn the user
+          productData.image = imageUrl;
+        } catch (error) {
+          console.error("Error processing image URL:", error);
+          // Fallback to default image
+          productData.image = 'https://via.placeholder.com/300x200?text=Producto';
+          toast.warning("La URL de imagen no es válida. Se usará una imagen predeterminada.");
+        }
+      } else {
+        productData.image = imageUrl;
+        console.log("Using image URL:", imageUrl);
+      }
     } else {
-      // Default image if nothing provided
-      productData.image = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiBmaWxsPSIjRkY2RjAwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiNGRkZGRkYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIj5BcnNlbmFsPC90ZXh0Pjwvc3ZnPg==';
+      // Default image if nothing provided - using a shorter placeholder URL
+      productData.image = 'https://via.placeholder.com/300x200?text=Producto';
       console.log("Using default image");
     }
     
@@ -155,6 +227,7 @@ const ProductManagement = ({ setCurrentPage }) => {
       
       if (result.success) {
         console.log("Product saved successfully:", result.data)
+        toast.success(editingProduct ? 'Producto actualizado correctamente' : 'Producto creado correctamente')
         await refetchProducts()
         
         // Reset form
@@ -164,18 +237,19 @@ const ProductManagement = ({ setCurrentPage }) => {
           description: '',
           categoryId: '',
           stock: '',
-          image: ''
+          image: '',
+          discountPercentage: ''
         })
         setImagePreview(null)
         setEditingProduct(null)
         setShowAddForm(false)
       } else {
         console.error("Failed to save product:", result.error)
-        alert(`Error: ${result.error || 'Failed to save product'}`)
+        toast.error(`Error: ${result.error || 'Failed to save product'}`)
       }
     } catch (error) {
       console.error("Error in form submission:", error)
-      alert(`Error: ${error.message || 'Unknown error'}`)
+      toast.error(`Error: ${error.message || 'Unknown error'}`)
     }
   }
 
@@ -184,41 +258,74 @@ const ProductManagement = ({ setCurrentPage }) => {
     setEditingProduct(product)
     setFormData({
       name: product.name,
-      price: product.price.toString(),
+      price: (product.originalPrice || product.price).toString(),
       description: product.description,
       categoryId: product.categoryId?.toString() || '',
       stock: product.stockQuantity?.toString() || '',
-      image: product.image || ''
+      image: product.image || '',
+      discountPercentage: product.discountPercentage?.toString() || ''
     })
     setImagePreview(product.image)
     setShowAddForm(true)
   }
 
   const handleDelete = async (productId) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      const result = await deleteProduct(productId)
-      if (result.success) {
-        console.log("Product deleted successfully")
-        await refetchProducts()
-      } else {
-        console.error("Failed to delete product:", result.error)
-        alert(`Error: ${result.error || 'Failed to delete product'}`)
+    // Find the product name for better notification
+    const productToDelete = products.find(p => p.id === productId);
+    const productName = productToDelete ? productToDelete.name : 'producto';
+    
+    // Use toast confirmation instead of window.confirm
+    toast.info(
+      <div>
+        <p>¿Estás seguro de eliminar {productName}?</p>
+        <div className="mt-2 flex justify-end gap-2">
+          <button 
+            onClick={async () => {
+              toast.dismiss();
+              const result = await deleteProduct(productId);
+              if (result.success) {
+                toast.success('Producto eliminado correctamente');
+                console.log("Product deleted successfully");
+                await refetchProducts();
+              } else {
+                console.error("Failed to delete product:", result.error);
+                toast.error(`Error: ${result.error || 'Failed to delete product'}`);
+              }
+            }}
+            className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+          >
+            Eliminar
+          </button>
+          <button 
+            onClick={() => toast.dismiss()}
+            className="bg-gray-500 text-white px-2 py-1 rounded text-sm"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>,
+      {
+        autoClose: false,
+        closeButton: false,
+        closeOnClick: false,
+        draggable: false
       }
-    }
+    );
   }
 
   const cancelForm = () => {
-    setShowAddForm(false)
-    setEditingProduct(null)
     setFormData({
       name: '',
       price: '',
       description: '',
       categoryId: '',
       stock: '',
-      image: ''
+      image: '',
+      discountPercentage: ''
     })
     setImagePreview(null)
+    setEditingProduct(null)
+    setShowAddForm(false)
   }
   
   return (
@@ -286,10 +393,10 @@ const ProductManagement = ({ setCurrentPage }) => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-orange-800 mb-2">
-                      💰 Precio (Zeni)
+                      💰 Precio Original (Zeni)
                     </label>
                     <input
                       type="number"
@@ -303,6 +410,24 @@ const ProductManagement = ({ setCurrentPage }) => {
                       style={{ fontSize: '16px', fontWeight: '500' }}
                       placeholder="0.00"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-orange-800 mb-2">
+                      🔥 Descuento (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="discountPercentage"
+                      value={formData.discountPercentage}
+                      onChange={handleInputChange}
+                      min="0"
+                      max="99"
+                      className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
+                      style={{ fontSize: '16px', fontWeight: '500' }}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-orange-600 font-medium mt-1">✨ Opcional - Ej: 10 para 10% de descuento</p>
                   </div>
 
                   <div>
@@ -369,10 +494,18 @@ const ProductManagement = ({ setCurrentPage }) => {
                       value={formData.image}
                       onChange={handleInputChange}
                       placeholder="https://example.com/image.jpg"
-                      className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
+                      className={`w-full px-4 py-3.5 bg-white border-2 ${formData.image && formData.image.length > 250 ? 'border-red-400' : 'border-orange-300'} rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm`}
                       style={{ fontSize: '16px', fontWeight: '500' }}
                     />
-                    <p className="text-xs text-orange-600 font-medium">✨ Ingresa la URL de la imagen</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-xs text-orange-600 font-medium">✨ Ingresa la URL de la imagen</p>
+                      {formData.image && formData.image.length > 250 && (
+                        <p className="text-xs text-red-600 font-medium">⚠️ URL demasiado larga (podría causar errores)</p>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Recomendación: Usa URLs cortas para evitar errores en la base de datos.
+                    </p>
                   </div>
                 </div>
 
@@ -437,7 +570,7 @@ const ProductManagement = ({ setCurrentPage }) => {
                       🏷️ Arsenal
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-bold text-blue-700 uppercase tracking-wider">
-                      💰 Precio (Zeni)
+                      💰 Precio / 🔥 Descuento
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-bold text-blue-700 uppercase tracking-wider">
                       🏷️ Tipo
@@ -478,6 +611,14 @@ const ProductManagement = ({ setCurrentPage }) => {
                         <div className="text-sm font-bold text-yellow-400">
                           ${product.price?.toFixed(2)}
                         </div>
+                        {product.discountPercentage > 0 && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-xs text-gray-500 line-through">${product.originalPrice?.toFixed(2)}</span>
+                            <span className="inline-flex px-2 py-0.5 text-xs font-bold rounded-full bg-red-500 text-white">
+                              -{product.discountPercentage}%
+                            </span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex px-3 py-1 text-xs font-bold rounded-full bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-md">

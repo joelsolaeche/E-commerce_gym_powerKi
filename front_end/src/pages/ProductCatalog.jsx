@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { useReduxProducts } from '../hooks'
+import { toast } from 'react-toastify'
 
 const ProductCatalog = ({ setCurrentPage }) => {
   const { addToCart } = useCart()
@@ -16,10 +17,12 @@ const ProductCatalog = ({ setCurrentPage }) => {
   
   const priceRanges = [
     { value: 'all', label: 'Todos los precios' },
-    { value: '0-25', label: '$0 - $25' },
-    { value: '25-50', label: '$25 - $50' },
-    { value: '50-100', label: '$50 - $100' },
-    { value: '100+', label: '$100+' }
+    { value: '0-100', label: '$0 - $100' },
+    { value: '100-500', label: '$100 - $500' },
+    { value: '500-1000', label: '$500 - $1000' },
+    { value: '1000-5000', label: '$1000 - $5000' },
+    { value: '5000-10000', label: '$5000 - $10000' },
+    { value: '10000+', label: '$10000+' }
   ]
 
   // Carousel auto-rotation
@@ -59,11 +62,7 @@ const ProductCatalog = ({ setCurrentPage }) => {
   })
   const handleAddToCart = (product) => {
     const cartItem = { ...product, stock: product.stockQuantity }
-    if (addToCart(cartItem)) {
-      alert(`${product.name} agregado al carrito!`)
-    } else {
-      alert('Producto sin stock disponible')
-    }
+    addToCart(cartItem)
   }
 
   const ProductModal = ({ product, onClose }) => {
@@ -261,11 +260,11 @@ const ProductCatalog = ({ setCurrentPage }) => {
                 <div
                   key={product.id}
                   className={`absolute inset-0 transition-opacity duration-500 ${
-                    index === currentSlide ? 'opacity-100' : 'opacity-0'
+                    index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
                   }`}
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-2 h-full">
-                    <div className="relative overflow-hidden">                      
+                                          <div className="relative overflow-hidden">                      
                       <img
                         src={product.image}
                         alt={product.name}
@@ -275,6 +274,11 @@ const ProductCatalog = ({ setCurrentPage }) => {
                       {product.stockQuantity === 0 && (
                         <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
                           <span className="text-white font-bold text-lg bg-red-600 px-4 py-2 rounded-lg">SIN STOCK</span>
+                        </div>
+                      )}
+                      {product.discountPercentage > 0 && (
+                        <div className="absolute top-4 right-4 bg-gradient-to-r from-red-600 to-red-500 text-white px-4 py-2 rounded-full text-base font-bold shadow-lg transform -rotate-12 animate-pulse border-2 border-red-400">
+                          -{product.discountPercentage}% OFF
                         </div>
                       )}
                     </div>
@@ -291,9 +295,21 @@ const ProductCatalog = ({ setCurrentPage }) => {
                         </p>
                       </div>
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-3xl font-bold" style={{ color: '#FFD700' }}>
-                          ${product.price}
-                        </span>
+                        <div>
+                          <span className="text-3xl font-bold" style={{ color: '#FFD700' }}>
+                            ${product.price}
+                          </span>
+                          {product.discountPercentage > 0 && (
+                            <div className="flex items-center mt-1 gap-2">
+                              <span className="text-lg text-white line-through opacity-80">
+                                ${product.originalPrice}
+                              </span>
+                              <span className="bg-white text-green-600 px-2 py-0.5 rounded-full text-sm font-bold">
+                                ¡Ahorras ${(product.originalPrice - product.price).toFixed(2)}!
+                              </span>
+                            </div>
+                          )}
+                        </div>
                         <p className={`text-sm font-medium ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {product.stockQuantity > 0 ? `${product.stockQuantity} disponibles` : 'Sin stock'}
                         </p>
@@ -307,14 +323,20 @@ const ProductCatalog = ({ setCurrentPage }) => {
                       </div>
                       
                       <button
-                        onClick={() => handleAddToCart(product)}
-                        disabled={product.stockQuantity === 0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (index === currentSlide) {
+                            handleAddToCart(product);
+                            toast.success(`${product.name} agregado al carrito!`);
+                          }
+                        }}
+                        disabled={product.stockQuantity === 0 || index !== currentSlide}
                         className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 text-lg ${
-                          product.stockQuantity > 0
+                          product.stockQuantity > 0 && index === currentSlide
                             ? 'text-white shadow-lg hover:shadow-xl'
                             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                         }`}
-                        style={product.stockQuantity > 0 ? {
+                        style={product.stockQuantity > 0 && index === currentSlide ? {
                           background: 'linear-gradient(135deg, #FF6F00 0%, #FFA500 100%)',
                           transition: 'all 0.2s ease'
                         } : {}}
@@ -371,7 +393,14 @@ const ProductCatalog = ({ setCurrentPage }) => {
             </div>
           </div>
         </div>        {/* Products Grid */}        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {filteredProducts.map(product => (            <div key={product.id} className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 border-2 border-orange-400/30 group">
+          {filteredProducts.map(product => (            <div 
+              key={product.id} 
+              className={`bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 border-2 ${
+                product.discountPercentage > 0 
+                  ? 'border-red-500/50 group hover:shadow-red-500/20'
+                  : 'border-orange-400/30 group'
+              }`}
+            >
               <div className="relative overflow-hidden">
                 <img
                   src={product.image}
@@ -383,7 +412,13 @@ const ProductCatalog = ({ setCurrentPage }) => {
                   <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
                     <span className="text-white font-bold text-lg bg-red-600 px-4 py-2 rounded-lg">SIN STOCK</span>
                   </div>
-                )}                <div className="absolute top-3 left-3">
+                )}
+                {product.discountPercentage > 0 && (
+                  <div className="absolute top-3 right-3 bg-gradient-to-r from-red-600 to-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transform -rotate-12 animate-pulse border border-red-400">
+                    -{product.discountPercentage}% OFF
+                  </div>
+                )}
+                <div className="absolute top-3 left-3">
                   <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full shadow-sm" style={{ backgroundColor: '#212121', color: '#FFFFFF' }}>
                     {product.category?.description || product.category}
                   </span>
@@ -397,7 +432,24 @@ const ProductCatalog = ({ setCurrentPage }) => {
                   >
                     {product.name}
                   </h3>
-                  <span className="text-xl font-bold whitespace-nowrap" style={{ color: '#FFD700' }}>${product.price}</span>
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="text-xl font-bold whitespace-nowrap" style={{ color: '#FFD700' }}>${product.price}</span>
+                      {product.discountPercentage > 0 && (
+                        <span className="text-xs font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                          ¡OFERTA!
+                        </span>
+                      )}
+                    </div>
+                    {product.discountPercentage > 0 && (
+                      <div className="flex items-center justify-end gap-1">
+                        <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+                        <span className="text-xs text-green-600">
+                          -{product.discountPercentage}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>                  <div className="mb-3">
                   <p className="text-xs text-blue-600 mb-1">Vendido por: <span className="font-medium text-blue-800">{product.sellerName || 'Power Ki Gym'}</span></p>
                   <p className={`text-sm font-medium ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-500'}`}>

@@ -8,6 +8,8 @@ import Cart from './pages/Cart'
 import ProductManagement from './pages/ProductManagement'
 import { CartProvider } from './context/CartContext'
 import { UserProvider } from './context/UserContext'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('catalog')
@@ -36,6 +38,7 @@ function App() {
             {renderPage()}
           </main>
           <Footer />
+          <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
         </div>
       </CartProvider>
     </UserProvider>

@@ -6,11 +6,7 @@ const ProductCard = ({ product, onClick }) => {
   const handleAddToCart = (e) => {
     e.stopPropagation();
     const cartItem = { ...product, stock: product.stockQuantity };
-    if (addToCart(cartItem)) {
-      alert(`${product.name} agregado al carrito!`);
-    } else {
-      alert('Producto sin stock disponible');
-    }
+    addToCart(cartItem);
   };
 
   return (
@@ -25,8 +21,8 @@ const ProductCard = ({ product, onClick }) => {
           className="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-500 hover:scale-105"
         />
         {product.discountPercentage > 0 && (
-          <div className="absolute top-3 right-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-            -{product.discountPercentage}%
+          <div className="absolute top-3 right-3 bg-gradient-to-r from-red-600 to-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transform -rotate-12 animate-pulse border border-red-400">
+            -{product.discountPercentage}% OFF
           </div>
         )}
       </div>
@@ -43,9 +39,21 @@ const ProductCard = ({ product, onClick }) => {
         
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-2xl font-bold text-orange-500">${product.price}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-2xl font-bold text-orange-500">${product.price}</p>
+              {product.discountPercentage > 0 && (
+                <span className="text-xs font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                  ¡OFERTA!
+                </span>
+              )}
+            </div>
             {product.discountPercentage > 0 && (
-              <p className="text-sm text-gray-500 line-through">${product.originalPrice}</p>
+              <div className="flex items-center gap-1">
+                <p className="text-sm text-gray-500 line-through">${product.originalPrice}</p>
+                <span className="text-xs text-green-600">
+                  -{product.discountPercentage}%
+                </span>
+              </div>
             )}
           </div>
           

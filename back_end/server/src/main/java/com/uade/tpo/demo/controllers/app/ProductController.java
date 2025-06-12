@@ -124,6 +124,7 @@ public class ProductController {
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "price", required = false) BigDecimal price,
+            @RequestParam(value = "originalPrice", required = false) BigDecimal originalPrice,
             @RequestParam(value = "discountPercentage", required = false) BigDecimal discountPercentage,
             @RequestParam(value = "stockQuantity", required = false) Integer stockQuantity,
             @RequestParam(value = "categoryId", required = false) Long categoryId,
@@ -134,7 +135,8 @@ public class ProductController {
         logger.info("Updating product ID: " + id);
         logger.info("Received parameters: name=" + name + ", description=" + 
                     (description != null ? description.substring(0, Math.min(20, description.length())) + "..." : null) + 
-                    ", price=" + price + ", categoryId=" + categoryId + 
+                    ", price=" + price + ", originalPrice=" + originalPrice + 
+                    ", categoryId=" + categoryId + 
                     ", image present=" + (image != null) + ", imageUrl=" + imageUrl +
                     ", sellerId=" + sellerId);
 
@@ -142,9 +144,14 @@ public class ProductController {
 
         if (name != null) productDetails.setName(name);
         if (description != null) productDetails.setDescription(description);
+        
+        // Handle price and discount separately
+        if (originalPrice != null) productDetails.setOriginalPrice(originalPrice);
         if (price != null) productDetails.setPrice(price);
-        if (price != null) productDetails.setOriginalPrice(price);
+        
+        // Apply discount if provided
         if (discountPercentage != null) productDetails.applyDiscount(discountPercentage);
+        
         if (stockQuantity != null) productDetails.setStockQuantity(stockQuantity);
 
         if (categoryId != null) {
