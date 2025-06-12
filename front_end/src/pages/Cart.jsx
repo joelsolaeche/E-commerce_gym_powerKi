@@ -6,6 +6,7 @@ const Cart = ({ setCurrentPage }) => {
   const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart()
   const { user } = useUser()
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('TARJETA_DEBITO')
 
   const handleCheckout = () => {
     if (!user) {
@@ -24,7 +25,7 @@ const Cart = ({ setCurrentPage }) => {
 
   const confirmCheckout = () => {
     // Simulate stock update and order processing
-    alert('¡Compra realizada con éxito! El stock ha sido actualizado.')
+    alert(`¡Compra realizada con éxito usando ${paymentMethod}! El stock ha sido actualizado.`)
     clearCart()
     setShowCheckoutModal(false)
     setCurrentPage('catalog')
@@ -88,10 +89,25 @@ const Cart = ({ setCurrentPage }) => {
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
                 <span>
-                  <strong>⚡ Aviso del Maestro:</strong> Esta es una demostración del Torneo de Artes Marciales. 
+                  <strong>⚡ Aviso del Maestro:</strong> Esta es una demostración del Torneo de Artes Marciales.
                   No se procesarán pagos reales. Tu fuerza se actualizará automáticamente después de confirmar.
                 </span>
               </p>
+            </div>
+            <div className="p-4 rounded-lg border-2" style={{ background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.05) 0%, rgba(255, 165, 0, 0.05) 100%)', borderColor: '#FFD700' }}>
+              <label htmlFor="paymentMethod" className="block text-sm font-bold mb-2" style={{ color: '#0D47A1' }}>
+                Selecciona Método de Pago
+              </label>
+              <select
+                id="paymentMethod"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full p-2 rounded-lg text-sm"
+                style={{ border: '1px solid #FFD700' }}
+              >
+                <option value="TARJETA_DEBITO">Tarjeta de Débito</option>
+                <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
+              </select>
             </div>
           </div>
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
