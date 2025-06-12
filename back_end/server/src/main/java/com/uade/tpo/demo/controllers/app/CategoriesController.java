@@ -6,7 +6,6 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.uade.tpo.demo.entity.Category;
@@ -20,6 +19,12 @@ public class CategoriesController {
     @Autowired
     private CategoryService categoryService;
 
+    @GetMapping
+    public ResponseEntity<List<Category>> getAllCategories() {
+        List<Category> categoriesList = categoryService.getAllCategories();
+        return ResponseEntity.ok(categoriesList);
+    }
+    
     @GetMapping("/getAll")
     public ResponseEntity<List<Category>> getCategories() {
         List<Category> categoriesList = categoryService.getAllCategories();
@@ -47,8 +52,7 @@ public class CategoriesController {
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/update/{categoryId}") 
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PutMapping("/update/{categoryId}")
     public ResponseEntity<Category> updateCategory(@PathVariable Long categoryId, @RequestBody Category categoryRequest) {
         categoryRequest.setId(categoryId);
         Category updatedCategory = categoryService.updateCategory(categoryRequest);

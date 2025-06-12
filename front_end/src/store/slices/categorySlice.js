@@ -22,7 +22,7 @@ export const categoryApi = api.injectEndpoints({
     }),
     updateCategory: builder.mutation({
       query: ({ id, ...categoryData }) => ({
-        url: `/categories/${id}`,
+        url: `/categories/update/${id}`,
         method: 'PUT',
         body: categoryData,
       }),
@@ -47,25 +47,46 @@ export const {
   useDeleteCategoryMutation,
 } = categoryApi;
 
-// Create the categories slice
+// Create a slice to store local category state
 const categorySlice = createSlice({
   name: 'categories',
   initialState: {
-    categories: [],
-    selectedCategory: null,
-    isLoading: false,
+    loading: false,
     error: null,
   },
   reducers: {
-    setSelectedCategory: (state, action) => {
-      state.selectedCategory = action.payload;
+    clearCategoryError: (state) => {
+      state.error = null;
     },
-    clearSelectedCategory: (state) => {
-      state.selectedCategory = null;
-    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Handle pending state for any category query
+      .addMatcher(
+        (action) => action.type.endsWith('/pending') && action.type.includes('Categories'),
+        (state) => {
+          state.loading = true;
+        }
+      )
+      // Handle fulfilled state for any category query
+      .addMatcher(
+        (action) => action.type.endsWith('/fulfilled') && action.type.includes('Categories'),
+        (state) => {
+          state.loading = false;
+          state.error = null;
+        }
+      )
+      // Handle rejected state for any category query
+      .addMatcher(
+        (action) => action.type.endsWith('/rejected') && action.type.includes('Categories'),
+        (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || 'An unknown error occurred';
+        }
+      );
   },
 });
 
-// Export actions and reducer
-export const { setSelectedCategory, clearSelectedCategory } = categorySlice.actions;
+export const { clearCategoryError } = categorySlice.actions;
+
 export default categorySlice.reducer; 

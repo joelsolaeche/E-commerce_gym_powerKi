@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '../context/UserContext'
-import { useReduxProducts } from '../hooks'
+import { useReduxProducts, useReduxCategories } from '../hooks'
 
 
 const ProductManagement = ({ setCurrentPage }) => {
@@ -11,8 +11,13 @@ const ProductManagement = ({ setCurrentPage }) => {
     updateProduct,
     deleteProduct,
     refetchProducts,
-    isLoading
+    isLoading: productsLoading
   } = useReduxProducts()
+  const { 
+    categories: categoryData = [], 
+    isLoading: categoriesLoading 
+  } = useReduxCategories()
+  
   const [products, setProducts] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
@@ -20,16 +25,66 @@ const ProductManagement = ({ setCurrentPage }) => {
     name: '',
     price: '',
     description: '',
-    category: '',
+    categoryId: '',
     stock: '',
     image: ''
   })
-
+  const [imagePreview, setImagePreview] = useState(null)
+  
+  // Debug categories data
   useEffect(() => {
-    setProducts(productsData)
-  }, [productsData])
-  // Categories for dropdown based on loaded products
-  const categories = Array.from(new Set(productsData.map(p => p.category?.description || p.category)))
+    console.log("Category data received:", categoryData)
+  }, [categoryData])
+  
+  // Update products when data changes
+  useEffect(() => {
+    if (productsData) {
+      // Filter products to show only the current seller's products
+      const sellerProducts = productsData.filter(product => 
+        product.sellerId === user?.id
+      )
+      setProducts(sellerProducts)
+      console.log("Products data received:", sellerProducts)
+    }
+  }, [productsData, user?.id])
+  
+  // Refresh product data when component mounts
+  useEffect(() => {
+    const loadData = async () => {
+      console.log("ProductManagement component - refreshing product data");
+      await refetchProducts();
+    };
+    
+    loadData();
+  }, [refetchProducts]);
+  
+  // Update image preview when image URL changes
+  useEffect(() => {
+    if (formData.image) {
+      console.log("Using image URL for preview:", formData.image);
+      setImagePreview(formData.image);
+    } else {
+      console.log("No image to preview");
+      setImagePreview(null);
+    }
+  }, [formData.image]);
+  
+  // Map categories for dropdown
+  const categories = categoryData && categoryData.length > 0 
+    ? categoryData.map(category => ({
+        id: category.id,
+        description: category.description
+      }))
+    : [
+        // Fallback categories if API fails
+        { id: 1, description: "Suplementos" },
+        { id: 2, description: "Proteínas" },
+        { id: 3, description: "Accesorios" },
+        { id: 4, description: "Vitaminas" },
+        { id: 5, description: "Ropa" },
+        { id: 6, description: "Equipamiento" }
+      ]
+  
   if (!user || user.type !== 'seller') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50 flex items-center justify-center px-4">
@@ -62,54 +117,93 @@ const ProductManagement = ({ setCurrentPage }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
-    if (editingProduct) {
-      await updateProduct(editingProduct.id, {
-        ...formData,
-        price: parseFloat(formData.price),
-        stockQuantity: parseInt(formData.stock)
-      })
-      setEditingProduct(null)
-    } else {
-      await createProduct({
-        ...formData,
-        price: parseFloat(formData.price),
-        originalPrice: parseFloat(formData.price),
-        stockQuantity: parseInt(formData.stock)
-      })
+    
+    // Create a copy of form data for submission
+    const productData = {
+      name: formData.name,
+      price: parseFloat(formData.price),
+      description: formData.description,
+      categoryId: parseInt(formData.categoryId), // Make sure to send categoryId as number
+      stockQuantity: parseInt(formData.stock),
+      originalPrice: parseFloat(formData.price), // Add original price to ensure it's sent
+      sellerId: user.id // Add the current user as the seller
     }
-
-    refetchProducts()
-
-    // Reset form
-    setFormData({
-      name: '',
-      price: '',
-      description: '',
-      category: '',
-      stock: '',
-      image: ''
-    })
-    setShowAddForm(false)
+    
+    // Handle image URL
+    if (formData.image && formData.image.trim() !== '') {
+      productData.image = formData.image;
+      console.log("Using image URL:", formData.image);
+    } else {
+      // Default image if nothing provided
+      productData.image = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiBmaWxsPSIjRkY2RjAwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiNGRkZGRkYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIj5BcnNlbmFsPC90ZXh0Pjwvc3ZnPg==';
+      console.log("Using default image");
+    }
+    
+    // Log the product data we're about to submit
+    console.log("Submitting product data:", productData);
+    
+    try {
+      let result
+      
+      if (editingProduct) {
+        result = await updateProduct(editingProduct.id, productData)
+      } else {
+        result = await createProduct(productData)
+      }
+      
+      console.log("Operation result:", result)
+      
+      if (result.success) {
+        console.log("Product saved successfully:", result.data)
+        await refetchProducts()
+        
+        // Reset form
+        setFormData({
+          name: '',
+          price: '',
+          description: '',
+          categoryId: '',
+          stock: '',
+          image: ''
+        })
+        setImagePreview(null)
+        setEditingProduct(null)
+        setShowAddForm(false)
+      } else {
+        console.error("Failed to save product:", result.error)
+        alert(`Error: ${result.error || 'Failed to save product'}`)
+      }
+    } catch (error) {
+      console.error("Error in form submission:", error)
+      alert(`Error: ${error.message || 'Unknown error'}`)
+    }
   }
 
   const handleEdit = (product) => {
+    console.log("Editing product:", product)
     setEditingProduct(product)
     setFormData({
       name: product.name,
       price: product.price.toString(),
       description: product.description,
-      category: product.category,
+      categoryId: product.categoryId?.toString() || '',
       stock: product.stockQuantity?.toString() || '',
-      image: product.image
+      image: product.image || ''
     })
+    setImagePreview(product.image)
     setShowAddForm(true)
   }
 
   const handleDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      await deleteProduct(productId)
-      refetchProducts()
+      const result = await deleteProduct(productId)
+      if (result.success) {
+        console.log("Product deleted successfully")
+        await refetchProducts()
+      } else {
+        console.error("Failed to delete product:", result.error)
+        alert(`Error: ${result.error || 'Failed to delete product'}`)
+      }
     }
   }
 
@@ -120,9 +214,11 @@ const ProductManagement = ({ setCurrentPage }) => {
       name: '',
       price: '',
       description: '',
-      category: '',
+      categoryId: '',
       stock: '',
-      image: ''    })
+      image: ''
+    })
+    setImagePreview(null)
   }
   
   return (
@@ -145,141 +241,178 @@ const ProductManagement = ({ setCurrentPage }) => {
             </svg>
             <span>⚡ Agregar Arsenal</span>
           </button>
-        </div>      {/* Add/Edit Product Form */}
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-cream-100 via-yellow-50 to-orange-100 backdrop-blur-md rounded-2xl p-6 w-full max-w-2xl max-h-screen overflow-y-auto shadow-2xl border-2 border-orange-400/50">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
-                ⚡ {editingProduct ? 'Actualizar Arsenal' : 'Forjar Nuevo Arsenal'} ⚡
-              </h2>
-              <button
-                onClick={cancelForm}
-                className="text-orange-500 hover:text-orange-700 p-2 rounded-lg hover:bg-orange-100 transition-all duration-200 transform hover:scale-110"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-orange-800 mb-2">
-                  🏷️ Nombre del Arsenal
-                </label>                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
-                  style={{ fontSize: '16px', fontWeight: '500' }}
-                  placeholder="Ej: Pesas del Entrenamiento Saiyan"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-orange-800 mb-2">
-                    💰 Precio (Zeni)
-                  </label>                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                    required
-                    className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
-                    style={{ fontSize: '16px', fontWeight: '500' }}
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-orange-800 mb-2">
-                    📦 Cantidad Disponible
-                  </label>                  <input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    min="0"
-                    required
-                    className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
-                    style={{ fontSize: '16px', fontWeight: '500' }}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-orange-800 mb-2">
-                  🏷️ Tipo de Arsenal
-                </label>                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
-                  style={{ fontSize: '16px', fontWeight: '500' }}
-                >
-                  <option value="">Selecciona el tipo de arsenal</option>
-                  {categories.map(category => (
-                    <option key={category} value={category} className="bg-white text-gray-800">{category}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-orange-800 mb-2">
-                  🖼️ Imagen del Arsenal
-                </label>                <input
-                  type="url"
-                  name="image"
-                  value={formData.image}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com/image.jpg"
-                  className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
-                  style={{ fontSize: '16px', fontWeight: '500' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-orange-800 mb-2">
-                  📝 Descripción del Arsenal
-                </label>                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows="4"
-                  required
-                  className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
-                  style={{ fontSize: '16px', fontWeight: '500' }}
-                  placeholder="Describe las propiedades y beneficios de este arsenal de entrenamiento..."
-                />
-              </div>
-
-              <div className="flex space-x-4 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400 text-white py-3.5 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 animate-super-saiyan-glow border border-orange-400"
-                >
-                  ⚡ {editingProduct ? 'Actualizar Arsenal' : 'Forjar Arsenal'} ⚡
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelForm}
-                  className="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 text-white py-3.5 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border border-gray-400"
-                >
-                  🚫 Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
-      )}        {/* Products Table */}
+        
+        {/* Loading indicator */}
+        {(productsLoading || categoriesLoading) && (
+          <div className="flex justify-center items-center my-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500"></div>
+            <span className="ml-3 text-lg font-medium text-orange-500">Cargando...</span>
+          </div>
+        )}
+
+        {/* Add/Edit Product Form */}
+        {showAddForm && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-gradient-to-br from-cream-100 via-yellow-50 to-orange-100 backdrop-blur-md rounded-2xl p-6 w-full max-w-2xl max-h-screen overflow-y-auto shadow-2xl border-2 border-orange-400/50">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                  ⚡ {editingProduct ? 'Actualizar Arsenal' : 'Forjar Nuevo Arsenal'} ⚡
+                </h2>
+                <button
+                  onClick={cancelForm}
+                  className="text-orange-500 hover:text-orange-700 p-2 rounded-lg hover:bg-orange-100 transition-all duration-200 transform hover:scale-110"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-orange-800 mb-2">
+                    🏷️ Nombre del Arsenal
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
+                    style={{ fontSize: '16px', fontWeight: '500' }}
+                    placeholder="Ej: Pesas del Entrenamiento Saiyan"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-orange-800 mb-2">
+                      💰 Precio (Zeni)
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleInputChange}
+                      step="0.01"
+                      min="0"
+                      required
+                      className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
+                      style={{ fontSize: '16px', fontWeight: '500' }}
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-orange-800 mb-2">
+                      📦 Cantidad Disponible
+                    </label>
+                    <input
+                      type="number"
+                      name="stock"
+                      value={formData.stock}
+                      onChange={handleInputChange}
+                      min="0"
+                      required
+                      className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
+                      style={{ fontSize: '16px', fontWeight: '500' }}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-orange-800 mb-2">
+                    🏷️ Tipo de Arsenal
+                  </label>
+                  <select
+                    name="categoryId"
+                    value={formData.categoryId}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
+                    style={{ fontSize: '16px', fontWeight: '500' }}
+                  >
+                    <option value="">Selecciona el tipo de arsenal</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id} className="bg-white text-gray-800">
+                        {category.description}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-orange-800 mb-2">
+                    🖼️ Imagen del Arsenal
+                  </label>
+                  <div className="space-y-3">
+                    {/* Image preview */}
+                    {imagePreview && (
+                      <div className="mb-3 flex justify-center">
+                        <img 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          className="h-40 w-auto object-contain rounded-lg border-2 border-orange-300 shadow-md"
+                          onError={(e) => {
+                            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiBmaWxsPSIjRkY2RjAwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiNGRkZGRkYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIj5BcnNlbmFsPC90ZXh0Pjwvc3ZnPg==';
+                          }}
+                        />
+                      </div>
+                    )}
+                    
+                    <input
+                      type="url"
+                      name="image"
+                      value={formData.image}
+                      onChange={handleInputChange}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
+                      style={{ fontSize: '16px', fontWeight: '500' }}
+                    />
+                    <p className="text-xs text-orange-600 font-medium">✨ Ingresa la URL de la imagen</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-orange-800 mb-2">
+                    📝 Descripción del Arsenal
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows="4"
+                    required
+                    className="w-full px-4 py-3.5 bg-white border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 placeholder-gray-400 transition-all duration-300 hover:border-orange-400 focus:shadow-lg shadow-sm"
+                    style={{ fontSize: '16px', fontWeight: '500' }}
+                    placeholder="Describe las propiedades y beneficios de este arsenal de entrenamiento..."
+                  />
+                </div>
+
+                <div className="flex space-x-4 pt-4">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400 text-white py-3.5 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 animate-super-saiyan-glow border border-orange-400"
+                  >
+                    ⚡ {editingProduct ? 'Actualizar Arsenal' : 'Forjar Arsenal'} ⚡
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelForm}
+                    className="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 text-white py-3.5 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border border-gray-400"
+                  >
+                    🚫 Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Products Table */}
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border-2 border-orange-400/50 hover:shadow-orange-500/20 hover:shadow-2xl transition-all duration-500">
           <div className="px-6 py-4 border-b border-orange-400/30 bg-gradient-to-r from-orange-500/20 to-yellow-500/20">
             <h3 className="text-xl font-bold bg-gradient-to-r from-orange-400 to-yellow-400 bg-clip-text text-transparent flex items-center gap-2">
@@ -297,7 +430,8 @@ const ProductManagement = ({ setCurrentPage }) => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">                <thead className="bg-gradient-to-r from-orange-500/30 to-yellow-500/30">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-orange-500/30 to-yellow-500/30">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-bold text-blue-700 uppercase tracking-wider">
                       🏷️ Arsenal
@@ -326,9 +460,11 @@ const ProductManagement = ({ setCurrentPage }) => {
                             alt={product.name}
                             className="w-14 h-14 rounded-xl object-cover mr-4 shadow-lg border-2 border-orange-400/50 group-hover:border-orange-400 transition-all duration-200"
                             onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/56x56/FF6F00/FFFFFF?text=Arsenal'
+                              // Use a data URI for the fallback image instead of an external URL
+                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiBmaWxsPSIjRkY2RjAwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiNGRkZGRkYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIj5BcnNlbmFsPC90ZXh0Pjwvc3ZnPg==';
                             }}
-                          />                          <div>
+                          />
+                          <div>
                             <div className="text-sm font-bold text-gray-800">
                               {product.name}
                             </div>
@@ -340,14 +476,15 @@ const ProductManagement = ({ setCurrentPage }) => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-bold text-yellow-400">
-                          ${product.price.toFixed(2)}
+                          ${product.price?.toFixed(2)}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex px-3 py-1 text-xs font-bold rounded-full bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-md">
-                          {product.category}
+                          {product.category?.description || product.category}
                         </span>
-                      </td>                      <td className="px-6 py-4">
+                      </td>
+                      <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-800">
                           {product.stockQuantity} unidades
                         </div>
@@ -383,15 +520,17 @@ const ProductManagement = ({ setCurrentPage }) => {
               </table>
             </div>
           )}
-        </div>{/* Back to Catalog Button */}
-      <div className="mt-8 text-center">
-        <button
-          onClick={() => setCurrentPage('catalog')}
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border border-blue-400"
-        >
-          🏠 Volver al Dojo Principal
-        </button>
-      </div>
+        </div>
+
+        {/* Back to Catalog Button */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => setCurrentPage('catalog')}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border border-blue-400"
+          >
+            🏠 Volver al Dojo Principal
+          </button>
+        </div>
       </div>
     </div>
   )

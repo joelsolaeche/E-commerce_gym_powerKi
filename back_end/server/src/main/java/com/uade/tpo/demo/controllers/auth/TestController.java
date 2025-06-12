@@ -1,85 +1,125 @@
 package com.uade.tpo.demo.controllers.auth;
 
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.uade.tpo.demo.entity.Cart;
+import com.uade.tpo.demo.entity.Order;
+import com.uade.tpo.demo.entity.PaymentMethod;
 import com.uade.tpo.demo.repository.UserRepository;
+import com.uade.tpo.demo.service.interfaces.CartService;
+import com.uade.tpo.demo.service.interfaces.OrderService;
+
+import java.util.Map;
+import java.util.logging.Logger;
 
 @RestController
 @RequestMapping("/api/test")
 @CrossOrigin(origins = {"http://localhost:4002", "http://localhost:5173"})
 public class TestController {
 
+    private static final Logger logger = Logger.getLogger(TestController.class.getName());
+    
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private CartService cartService;
+    
+    @Autowired
+    private OrderService orderService;
     
     @Autowired
     private UserRepository userRepository;
 
     @GetMapping("/db-status")
-    public ResponseEntity<Map<String, Object>> testDatabaseConnection() {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ResponseEntity<String> checkDatabaseConnection() {
         try {
-            // Test database connection
-            String dbStatus = jdbcTemplate.queryForObject("SELECT 'Connection successful'", String.class);
-            response.put("dbConnection", dbStatus);
-            
-            // Check table existence
-            List<Map<String, Object>> tables = jdbcTemplate.queryForList(
-                "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC'"
-            );
-            response.put("tables", tables);
-            
-            // Count users
             long userCount = userRepository.count();
-            response.put("userCount", userCount);
-            
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok("Database connection successful. User count: " + userCount);
         } catch (Exception e) {
-            response.put("error", e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.internalServerError().body(response);
+            return ResponseEntity.status(500).body("Database connection failed: " + e.getMessage());
         }
     }
 
-    @GetMapping("/roles")
-    public ResponseEntity<Map<String, Object>> testRoles() {
-        Map<String, Object> response = new HashMap<>();
-        
+    @GetMapping("/all")
+    public String allAccess() {
+        return "Public Content.";
+    }
+
+    @GetMapping("/user")
+    public String userAccess() {
+        return "User Content.";
+    }
+
+    @GetMapping("/admin")
+    public String adminAccess() {
+        return "Admin Board.";
+    }
+    
+    // NEW TEST ENDPOINT FOR CREATING ORDERS
+    @PostMapping("/create-order")
+    public ResponseEntity<?> createOrderTest(@RequestBody Map<String, Object> orderData) {
         try {
-            // List all possible role values
-            response.put("validRoles", java.util.Arrays.asList(com.uade.tpo.demo.entity.Role.values()));
+            // Log the received data
+            logger.info("TEST ENDPOINT: Received order data: " + orderData);
             
-            // Test parsing a role
-            try {
-                com.uade.tpo.demo.entity.Role userRole = com.uade.tpo.demo.entity.Role.valueOf("USER");
-                response.put("userRoleTest", userRole.name());
-            } catch (Exception e) {
-                response.put("userRoleError", e.getMessage());
+            // Extract userId from request data (required)
+            if (!orderData.containsKey("userId")) {
+                logger.warning("TEST ENDPOINT: Missing userId in request");
+                return ResponseEntity.badRequest().body("Missing userId in request");
             }
             
-            try {
-                com.uade.tpo.demo.entity.Role adminRole = com.uade.tpo.demo.entity.Role.valueOf("ADMIN");
-                response.put("adminRoleTest", adminRole.name());
-            } catch (Exception e) {
-                response.put("adminRoleError", e.getMessage());
+            Long userId = Long.valueOf(orderData.get("userId").toString());
+            logger.info("TEST ENDPOINT: Creating order for user ID: " + userId);
+            
+            // Get payment method if provided
+            PaymentMethod paymentMethod = PaymentMethod.TARJETA_DEBITO; // Default
+            if (orderData.containsKey("paymentMethod")) {
+                try {
+                    paymentMethod = PaymentMethod.valueOf(orderData.get("paymentMethod").toString());
+                    logger.info("TEST ENDPOINT: Using payment method: " + paymentMethod);
+                } catch (IllegalArgumentException e) {
+                    logger.warning("TEST ENDPOINT: Invalid payment method: " + orderData.get("paymentMethod").toString());
+                }
             }
             
-            return ResponseEntity.ok(response);
+            // Get the user's cart
+            Cart userCart;
+            try {
+                userCart = cartService.getCartByUserId(userId);
+                logger.info("TEST ENDPOINT: Found cart for user ID: " + userId);
+            } catch (Exception e) {
+                logger.warning("TEST ENDPOINT: Error finding cart for user: " + e.getMessage());
+                e.printStackTrace();
+                return ResponseEntity.badRequest().body("Error finding cart: " + e.getMessage());
+            }
+            
+            if (userCart == null) {
+                logger.warning("TEST ENDPOINT: No cart found for user ID: " + userId);
+                return ResponseEntity.badRequest().body("No cart found for user ID: " + userId);
+            }
+            
+            // Create order from the user's cart with payment method
+            Order createdOrder;
+            try {
+                createdOrder = orderService.createOrderFromCart(userCart.getId(), paymentMethod);
+                logger.info("TEST ENDPOINT: Successfully created order from cart ID: " + userCart.getId());
+            } catch (Exception e) {
+                logger.severe("TEST ENDPOINT: Error creating order: " + e.getMessage());
+                e.printStackTrace();
+                return ResponseEntity.badRequest().body("Error creating order: " + e.getMessage());
+            }
+            
+            return ResponseEntity.ok(createdOrder);
         } catch (Exception e) {
-            response.put("error", e.getMessage());
+            logger.severe("TEST ENDPOINT: Unexpected error: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.internalServerError().body(response);
+            return ResponseEntity.badRequest().body("Unexpected error: " + e.getMessage());
         }
     }
 } 

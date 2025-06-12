@@ -54,14 +54,21 @@ export const useReduxCategories = () => {
   };
   
   return {
+    // Data
     categories: allCategories || [],
-    isLoading: isLoadingCategories || createCategoryResult.isLoading || updateCategoryResult.isLoading || deleteCategoryResult.isLoading,
+    
+    // Status
+    isLoading: categories.loading || isLoadingCategories || 
+      createCategoryResult.isLoading || 
+      updateCategoryResult.isLoading || 
+      deleteCategoryResult.isLoading,
     error: categories.error,
+    
+    // Methods
     getCategoryById,
     createCategory,
     updateCategory,
     deleteCategory,
-    refetchCategories,
-    selectedCategory: categories.selectedCategory
+    refetchCategories
   };
 }; 

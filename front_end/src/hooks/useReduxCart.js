@@ -1,4 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux';
+import { useUser } from '../context/UserContext';
 import {
   useGetUserCartQuery,
   useAddToCartMutation,
@@ -16,12 +17,17 @@ import {
 export const useReduxCart = () => {
   const dispatch = useDispatch();
   const cart = useSelector(state => state.cart);
-  const auth = useSelector(state => state.auth);
+  const reduxAuth = useSelector(state => state.auth);
+  const { user: contextUser } = useUser(); // Get user from context
+  
+  // Use either context user or redux auth, with context taking priority
+  const isAuthenticated = !!contextUser || reduxAuth.isAuthenticated;
+  const user = contextUser || reduxAuth.user;
   
   // Get user cart from API if authenticated, otherwise use local state
   const { data: serverCart, isLoading: isLoadingCart, refetch: refetchCart } = 
     useGetUserCartQuery(undefined, { 
-      skip: !auth.isAuthenticated,
+      skip: !isAuthenticated,
       refetchOnMountOrArgChange: true 
     });
   
@@ -35,12 +41,13 @@ export const useReduxCart = () => {
   const addToCart = async (product, quantity = 1) => {
     if (product.stockQuantity === 0) return false;
     
-    if (auth.isAuthenticated) {
+    if (isAuthenticated) {
       try {
         await addToCartMutation({ productId: product.id, quantity }).unwrap();
         refetchCart();
         return true;
       } catch (error) {
+        console.error("Add to cart error:", error);
         return false;
       }
     } else {
@@ -57,12 +64,13 @@ export const useReduxCart = () => {
       return removeFromCart(productId);
     }
     
-    if (auth.isAuthenticated) {
+    if (isAuthenticated) {
       try {
         await updateCartItemMutation({ productId, quantity }).unwrap();
         refetchCart();
         return true;
       } catch (error) {
+        console.error("Update quantity error:", error);
         return false;
       }
     } else {
@@ -75,12 +83,13 @@ export const useReduxCart = () => {
   // Remove from cart
   const [removeFromCartMutation, removeFromCartResult] = useRemoveFromCartMutation();
   const removeFromCart = async (productId) => {
-    if (auth.isAuthenticated) {
+    if (isAuthenticated) {
       try {
         await removeFromCartMutation(productId).unwrap();
         refetchCart();
         return true;
       } catch (error) {
+        console.error("Remove from cart error:", error);
         return false;
       }
     } else {
@@ -93,12 +102,13 @@ export const useReduxCart = () => {
   // Clear cart
   const [clearCartMutation, clearCartResult] = useClearCartMutation();
   const clearCart = async () => {
-    if (auth.isAuthenticated) {
+    if (isAuthenticated) {
       try {
         await clearCartMutation().unwrap();
         refetchCart();
         return true;
       } catch (error) {
+        console.error("Clear cart error:", error);
         return false;
       }
     } else {
@@ -111,16 +121,38 @@ export const useReduxCart = () => {
   // Create order
   const [createOrderMutation, createOrderResult] = useCreateOrderMutation();
   const createOrder = async (orderData) => {
-    if (!auth.isAuthenticated) {
+    if (!isAuthenticated) {
       return { success: false, error: 'You must be logged in to create an order' };
     }
     
+    // Make sure the token is in localStorage
+    if (user && user.token) {
+      localStorage.setItem('token', user.token);
+    }
+    
     try {
-      const result = await createOrderMutation(orderData).unwrap();
-      clearCart();
+      // Make sure we use the user ID from the context if available
+      const finalOrderData = {
+        ...orderData,
+        userId: user?.id || orderData.userId
+      };
+      
+      console.log('Creating order with data:', finalOrderData);
+      const result = await createOrderMutation(finalOrderData).unwrap();
+      await clearCart();
       return { success: true, data: result };
     } catch (error) {
-      return { success: false, error: error.data?.message || 'Failed to create order' };
+      console.error('Order creation error:', error);
+      if (error.status === 403) {
+        return { 
+          success: false, 
+          error: 'Error de autenticación: Su sesión ha expirado. Por favor, inicie sesión nuevamente.' 
+        };
+      }
+      return { 
+        success: false, 
+        error: error.data?.message || error.message || 'Failed to create order' 
+      };
     }
   };
   
@@ -140,6 +172,7 @@ export const useReduxCart = () => {
     removeFromCart,
     clearCart,
     createOrder,
-    refetchCart
+    refetchCart,
+    isAuthenticated
   };
 }; 

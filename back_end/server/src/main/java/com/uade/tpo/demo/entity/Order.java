@@ -42,6 +42,10 @@ public class Order {
 
     @Column(name = "is_converted_to_bill")
     private Boolean convertedToBill;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method")
+    private PaymentMethod paymentMethod;
 
     public Boolean getConvertedToBill() {
         return convertedToBill != null && convertedToBill;

@@ -16,9 +16,17 @@ export const productApi = api.injectEndpoints({
       query: (name) => `/products/search?name=${encodeURIComponent(name)}`,
       providesTags: ['Products'],
     }),
+    getProductsByCategory: builder.query({
+      query: (category) => `/products/byCategory/${encodeURIComponent(category)}`,
+      providesTags: ['Products'],
+    }),
     getProductsByPriceRange: builder.query({
       query: ({ minPrice, maxPrice }) => 
         `/products/byPrice?minPrice=${minPrice}&maxPrice=${maxPrice}`,
+      providesTags: ['Products'],
+    }),
+    getProductsBySeller: builder.query({
+      query: (sellerId) => `/products/bySeller/${sellerId}`,
       providesTags: ['Products'],
     }),
     createProduct: builder.mutation({
@@ -30,11 +38,25 @@ export const productApi = api.injectEndpoints({
       invalidatesTags: ['Products'],
     }),
     updateProduct: builder.mutation({
-      query: ({ id, ...productData }) => ({
-        url: `/products/update/${id}`,
-        method: 'PUT',
-        body: productData,
-      }),
+      query: ({ id, formData }) => {
+        // For FormData objects, pass them directly without extracting
+        if (formData instanceof FormData) {
+          return {
+            url: `/products/update/${id}`,
+            method: 'PUT',
+            body: formData,
+            // Important: don't let RTK Query serialize FormData to JSON
+            formData: true,
+          };
+        }
+        
+        // For regular objects, handle normally
+        return {
+          url: `/products/update/${id}`,
+          method: 'PUT',
+          body: formData || {}, // If formData is undefined, use empty object
+        };
+      },
       invalidatesTags: (result, error, { id }) => [{ type: 'Products', id }],
     }),
     deleteProduct: builder.mutation({
@@ -47,36 +69,86 @@ export const productApi = api.injectEndpoints({
   }),
 });
 
-// Export the auto-generated hooks
+// Export API hooks
 export const {
   useGetProductsQuery,
   useGetProductByIdQuery,
   useSearchProductsQuery,
+  useGetProductsByCategoryQuery,
   useGetProductsByPriceRangeQuery,
+  useGetProductsBySellerQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
 } = productApi;
 
-// Create the product slice
+// Create a slice to store local product state
 const productSlice = createSlice({
   name: 'products',
   initialState: {
-    products: [],
     selectedProduct: null,
-    isLoading: false,
+    selectedCategory: 'all',
+    priceRange: { min: 0, max: 1000 },
+    searchTerm: '',
     error: null,
+    loading: false,
+    featuredProducts: [],
   },
   reducers: {
     setSelectedProduct: (state, action) => {
       state.selectedProduct = action.payload;
     },
-    clearSelectedProduct: (state) => {
-      state.selectedProduct = null;
+    setSelectedCategory: (state, action) => {
+      state.selectedCategory = action.payload;
     },
+    setPriceRange: (state, action) => {
+      state.priceRange = action.payload;
+    },
+    setSearchTerm: (state, action) => {
+      state.searchTerm = action.payload;
+    },
+    setFeaturedProducts: (state, action) => {
+      state.featuredProducts = action.payload;
+    },
+    clearProductError: (state) => {
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Handle pending state for any product query
+      .addMatcher(
+        (action) => action.type.endsWith('/pending') && action.type.includes('Products'),
+        (state) => {
+          state.loading = true;
+        }
+      )
+      // Handle fulfilled state for any product query
+      .addMatcher(
+        (action) => action.type.endsWith('/fulfilled') && action.type.includes('Products'),
+        (state) => {
+          state.loading = false;
+          state.error = null;
+        }
+      )
+      // Handle rejected state for any product query
+      .addMatcher(
+        (action) => action.type.endsWith('/rejected') && action.type.includes('Products'),
+        (state, action) => {
+          state.loading = false;
+          state.error = action.error.message || 'An unknown error occurred';
+        }
+      );
   },
 });
 
-// Export actions and reducer
-export const { setSelectedProduct, clearSelectedProduct } = productSlice.actions;
+export const {
+  setSelectedProduct,
+  setSelectedCategory,
+  setPriceRange,
+  setSearchTerm,
+  setFeaturedProducts,
+  clearProductError,
+} = productSlice.actions;
+
 export default productSlice.reducer; 

@@ -11,16 +11,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 @Service
 public class FileUploadServiceImpl implements FileUploadService {
 
+    private static final Logger logger = Logger.getLogger(FileUploadServiceImpl.class.getName());
     private final String UPLOAD_DIR = "src/main/resources/static/uploads"; 
 
     @Override
     public String uploadImage(MultipartFile file) throws IOException {
+        if (file == null) {
+            logger.warning("Null file passed to uploadImage");
+            return null;
+        }
+        
         if (file.isEmpty()) {
-            throw new IOException("Cannot upload empty file.");
+            logger.warning("Empty file passed to uploadImage");
+            return null;
         }
 
         String originalFilename = file.getOriginalFilename();
@@ -33,7 +41,8 @@ public class FileUploadServiceImpl implements FileUploadService {
 
         Path filePath = Paths.get(UPLOAD_DIR, newFileName);
         Files.copy(file.getInputStream(), filePath);
-
+        
+        logger.info("Uploaded file to: " + filePath.toString());
         return "/uploads/" + newFileName; 
     }
 }

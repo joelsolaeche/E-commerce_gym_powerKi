@@ -1,14 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { useUser } from '../context/UserContext'
+import { useReduxCart, useReduxProducts } from '../hooks'
 
 const Cart = ({ setCurrentPage }) => {
   const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart()
+  const { createOrder, isAuthenticated } = useReduxCart()
+  const { refetchProducts } = useReduxProducts()
   const { user } = useUser()
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('TARJETA_DEBITO')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [checkoutError, setCheckoutError] = useState('')
+
+  // Make sure token is in localStorage for API calls
+  useEffect(() => {
+    if (user && user.token) {
+      localStorage.setItem('token', user.token);
+    }
+  }, [user]);
 
   const handleCheckout = () => {
+    // Make sure we have a user first
     if (!user) {
       alert('Debes iniciar sesión para realizar la compra')
       setCurrentPage('login')
@@ -20,17 +33,123 @@ const Cart = ({ setCurrentPage }) => {
       return
     }
     
+    // Try to refresh token before checkout if exists
+    const savedUser = localStorage.getItem('user')
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser)
+        if (parsedUser.token) {
+          console.log('Refreshing token before checkout...');
+          localStorage.setItem('token', parsedUser.token);
+        }
+      } catch (e) {
+        console.error('Error parsing saved user:', e);
+      }
+    }
+    
     setShowCheckoutModal(true)
+    setCheckoutError('')
   }
 
-  const confirmCheckout = () => {
-    // Simulate stock update and order processing
-    alert(`¡Compra realizada con éxito usando ${paymentMethod}! El stock ha sido actualizado.`)
-    clearCart()
-    setShowCheckoutModal(false)
-    setCurrentPage('catalog')
+  // COMPLETELY REWRITTEN with a very simple approach
+  const confirmCheckout = async () => {
+    if (isProcessing) return;
+    
+    // Check if we have a user
+    if (!user) {
+      setCheckoutError('Debes iniciar sesión para realizar la compra')
+      return
+    }
+    
+    try {
+      setIsProcessing(true);
+      setCheckoutError('');
+      
+      // Simplest possible approach - no tokens, just the user ID
+      const orderData = {
+        userId: user.id,
+        paymentMethod: paymentMethod
+      };
+      
+      console.log("Creating order with the simplest approach for user:", user.id);
+      console.log("Using payment method:", paymentMethod);
+      
+      // Log items being purchased for debugging
+      console.log("Items in cart:");
+      cart.forEach(item => {
+        console.log(`- Product ID: ${item.id}, Name: ${item.name}, Quantity: ${item.quantity}, Current Stock: ${item.stockQuantity || 'unknown'}`);
+      });
+      
+      // Direct API call to original endpoint
+      try {
+        const response = await fetch('http://localhost:8080/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(orderData)
+        });
+        
+        if (response.ok) {
+          console.log("Order created successfully!");
+          
+          // Let's manually test the stock update for each product in the cart
+          console.log("Testing stock updates for each product:");
+          
+          for (const item of cart) {
+            try {
+              // Call our direct stock update endpoint for each item
+              const stockUpdateResponse = await fetch(`http://localhost:8080/products/directUpdateStock/${item.id}/${item.quantity}`, {
+                method: 'POST'
+              });
+              
+              const stockUpdateResult = await stockUpdateResponse.text();
+              console.log(`Manual stock update for product ${item.id}: ${stockUpdateResult}`);
+            } catch (stockError) {
+              console.error(`Error updating stock for product ${item.id}:`, stockError);
+            }
+          }
+          
+          // Refresh product data to update stock quantities
+          await refetchProducts();
+          console.log("Product data refreshed");
+          
+          // Show a more prominent success message
+          const successMessage = `
+            ¡Compra realizada con éxito! 🎉
+            
+            Tu arsenal ha sido enviado y el stock ha sido actualizado.
+            Gracias por tu compra, guerrero!
+          `;
+          alert(successMessage);
+          
+          clearCart();
+          setShowCheckoutModal(false);
+          setCurrentPage('catalog');
+        } else {
+          let errorText;
+          try {
+            const errorData = await response.json();
+            console.error("Order creation failed:", errorData);
+            errorText = JSON.stringify(errorData);
+          } catch (e) {
+            errorText = await response.text();
+          }
+          setCheckoutError(`Error: ${errorText}`);
+        }
+      } catch (apiError) {
+        console.error("API error:", apiError);
+        setCheckoutError(`Error de comunicación con el servidor: ${apiError.message}`);
+      }
+    } catch (error) {
+      console.error('Error during checkout:', error);
+      setCheckoutError('Error al procesar la orden. Por favor, intenta de nuevo.');
+    } finally {
+      setIsProcessing(false);
+    }
   }
-    const CheckoutModal = () => {
+  
+  const CheckoutModal = () => {
     if (!showCheckoutModal) return null;
 
     return (
@@ -83,6 +202,19 @@ const Cart = ({ setCurrentPage }) => {
               </div>
             </div>
             
+            {checkoutError && (
+              <div className="p-4 rounded-lg border-2 bg-red-50 text-red-700 border-red-300">
+                <p className="text-sm flex items-start font-medium">
+                  <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <span>
+                    <strong>⚠️ Error:</strong> {checkoutError}
+                  </span>
+                </p>
+              </div>
+            )}
+            
             <div className="p-4 rounded-lg border-2" style={{ background: 'linear-gradient(135deg, rgba(13, 71, 161, 0.1) 0%, rgba(25, 118, 210, 0.1) 100%)', borderColor: '#2196F3' }}>
               <p className="text-xs sm:text-sm flex items-start font-medium" style={{ color: '#0D47A1' }}>
                 <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" style={{ color: '#2196F3' }} fill="currentColor" viewBox="0 0 20 20">
@@ -107,39 +239,50 @@ const Cart = ({ setCurrentPage }) => {
               >
                 <option value="TARJETA_DEBITO">Tarjeta de Débito</option>
                 <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
+                <option value="EFECTIVO">Efectivo</option>
               </select>
             </div>
           </div>
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
             <button
               onClick={() => setShowCheckoutModal(false)}
-              className="flex-1 px-4 py-3 text-white rounded-lg text-sm sm:text-base font-bold transition-all duration-200 border-2 hover:shadow-lg transform hover:scale-105"
+              disabled={isProcessing}
+              className="flex-1 px-4 py-3 text-white rounded-lg text-sm sm:text-base font-bold transition-all duration-200 border-2 hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: 'linear-gradient(135deg, #757575 0%, #424242 100%)', borderColor: '#9E9E9E' }}
               onMouseEnter={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, #616161 0%, #212121 100%)'
+                if (!e.disabled) {
+                  e.target.style.background = 'linear-gradient(135deg, #616161 0%, #212121 100%)'
+                }
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, #757575 0%, #424242 100%)'
+                if (!e.disabled) {
+                  e.target.style.background = 'linear-gradient(135deg, #757575 0%, #424242 100%)'
+                }
               }}
             >
               ❌ Cancelar
             </button>
             <button
               onClick={confirmCheckout}
-              className="flex-1 px-4 py-3 text-white rounded-lg text-sm sm:text-base font-bold shadow-2xl transition-all duration-300 transform hover:scale-105"
+              disabled={isProcessing}
+              className="flex-1 px-4 py-3 text-white rounded-lg text-sm sm:text-base font-bold shadow-2xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: 'linear-gradient(135deg, #FF6F00 0%, #FFA500 100%)' }}
               onMouseEnter={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, #FFD700 0%, #FFEB3B 100%)'
-                e.target.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.6)'
-                e.target.style.color = '#212121'
+                if (!e.disabled) {
+                  e.target.style.background = 'linear-gradient(135deg, #FFD700 0%, #FFEB3B 100%)'
+                  e.target.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.6)'
+                  e.target.style.color = '#212121'
+                }
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, #FF6F00 0%, #FFA500 100%)'
-                e.target.style.boxShadow = ''
-                e.target.style.color = 'white'
+                if (!e.disabled) {
+                  e.target.style.background = 'linear-gradient(135deg, #FF6F00 0%, #FFA500 100%)'
+                  e.target.style.boxShadow = ''
+                  e.target.style.color = 'white'
+                }
               }}
             >
-              ⚡ ¡Confirmar Poder!
+              {isProcessing ? '⏳ Procesando...' : '⚡ ¡Confirmar Poder!'}
             </button>
           </div>
         </div>

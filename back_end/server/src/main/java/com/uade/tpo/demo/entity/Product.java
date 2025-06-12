@@ -43,6 +43,10 @@ public class Product {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    @ManyToOne
+    @JoinColumn(name = "seller_id")
+    private User seller;
+
     @Column(name = "stock_quantity", nullable = false)
     private int stockQuantity;
 

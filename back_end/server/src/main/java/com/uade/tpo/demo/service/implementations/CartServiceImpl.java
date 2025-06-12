@@ -20,9 +20,12 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.HashSet;
+import java.util.logging.Logger;
 
 @Service
 public class CartServiceImpl implements CartService {
+    
+    private static final Logger logger = Logger.getLogger(CartServiceImpl.class.getName());
 
     @Autowired
     private CartRepository cartRepository;
@@ -61,27 +64,28 @@ public class CartServiceImpl implements CartService {
                 .findFirst();
     
         if (existingCartProductOpt.isPresent()) {
-
             CartProduct cartProduct = existingCartProductOpt.get();
             int newQuantity = cartProduct.getQuantity() + quantity;
     
             Product product = cartProduct.getProduct();
+            // Check if there's enough stock
             if (product.getStockQuantity() < newQuantity) {
                 throw new RuntimeException("Not enough stock for Product ID: " + productId);
             }
 
-            if (newQuantity  < 1){
-                throw new RuntimeException("Product Quantity cant be less than 1. Remove the product if needed.");
+            if (newQuantity < 1) {
+                throw new RuntimeException("Product Quantity can't be less than 1. Remove the product if needed.");
             }
 
             cartProduct.setQuantity(newQuantity);
+            logger.info("Updated quantity for product " + productId + " in cart " + cartId + " to " + newQuantity);
         } else {
             // If it doesn't exist, fetch the product
             Product product = productRepository.findById(productId)
                     .orElseThrow(() -> new EntityNotFoundException("Product not found"));
                     
-            if (quantity  < 1){
-                throw new RuntimeException("Product Quantity cant be less than 1. Remove the product if needed.");
+            if (quantity < 1) {
+                throw new RuntimeException("Product Quantity can't be less than 1. Remove the product if needed.");
             }
 
             // Check stock availability for the new product
@@ -97,16 +101,11 @@ public class CartServiceImpl implements CartService {
                     .build();
     
             cart.getCartProducts().add(newCartProduct);
+            logger.info("Added product " + productId + " to cart " + cartId + " with quantity " + quantity);
         }
     
-        // Update stock in the database
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-        product.setStockQuantity(product.getStockQuantity() - quantity); // Subtract the quantity
-        productRepository.save(product); // Save the updated product
-    
-        // Save the updated cart (optional, since the cart is already managed)
-        cartRepository.save(cart); 
+        // Save the updated cart
+        cartRepository.save(cart);
     }    
     
     @Transactional
@@ -121,28 +120,23 @@ public class CartServiceImpl implements CartService {
                 .findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Product not found in the cart"));
 
-        // Restore the product stock
-        Product product = cartProduct.getProduct();
-        product.setStockQuantity(product.getStockQuantity() + cartProduct.getQuantity());
-        productRepository.save(product);
-
         // Remove the CartProduct from the cart
         cart.getCartProducts().remove(cartProduct);
+        logger.info("Removed product " + productId + " from cart " + cartId);
 
         // Save the updated cart
         cartRepository.save(cart);
     }
-
-
 
     @Override
     @Transactional
     public void deleteCart(Long cartId) {
         Cart cart = cartRepository.findById(cartId)
             .orElseThrow(() -> new EntityNotFoundException("Cart not found"));
-        // Inicializa la colección
+        // Initialize collection
         cart.getCartProducts().size();
         cartRepository.delete(cart);
+        logger.info("Deleted cart " + cartId);
     }
     
     @Override
@@ -157,7 +151,7 @@ public class CartServiceImpl implements CartService {
     public Cart getCartByUserId(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("Cart not found"));
-        // Fuerza la inicialización de la colección
+        // Force initialization of the collection
         cart.getCartProducts().size();
         return cart;
     }

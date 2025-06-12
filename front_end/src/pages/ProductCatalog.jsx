@@ -104,7 +104,7 @@ const ProductCatalog = ({ setCurrentPage }) => {
                 </div>
                   <div className="p-6 rounded-xl border-2 border-orange-400/50 bg-gradient-to-r from-gray-100/80 to-gray-200/80 backdrop-blur-sm">
                   <p className="text-sm mb-2 text-orange-600 font-bold">⚡ Vendido por</p>
-                  <p className="font-semibold text-gray-800 text-lg">{product.seller || 'Power Ki Gym'}</p><p className={`text-sm font-medium mt-3 ${product.stockQuantity > 0 ? '' : ''}`} style={{ color: product.stockQuantity > 0 ? '#4CAF50' : '#F44336' }}>
+                  <p className="font-semibold text-gray-800 text-lg">{product.sellerName || 'Power Ki Gym'}</p><p className={`text-sm font-medium mt-3 ${product.stockQuantity > 0 ? '' : ''}`} style={{ color: product.stockQuantity > 0 ? '#4CAF50' : '#F44336' }}>
                     {product.stockQuantity > 0 ? `⚡ ${product.stockQuantity} unidades en arsenal` : '❌ Arsenal agotado'}
                   </p>
                 </div>
@@ -297,7 +297,16 @@ const ProductCatalog = ({ setCurrentPage }) => {
                         <p className={`text-sm font-medium ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {product.stockQuantity > 0 ? `${product.stockQuantity} disponibles` : 'Sin stock'}
                         </p>
-                      </div>                      <button
+                      </div>
+                      
+                      <div className="mb-4">
+                        <p className="text-sm text-white">
+                          <span className="font-medium">Vendido por: </span>
+                          <span className="font-bold" style={{ color: '#FFD700' }}>{product.sellerName || 'Power Ki Gym'}</span>
+                        </p>
+                      </div>
+                      
+                      <button
                         onClick={() => handleAddToCart(product)}
                         disabled={product.stockQuantity === 0}
                         className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 text-lg ${
@@ -390,7 +399,7 @@ const ProductCatalog = ({ setCurrentPage }) => {
                   </h3>
                   <span className="text-xl font-bold whitespace-nowrap" style={{ color: '#FFD700' }}>${product.price}</span>
                 </div>                  <div className="mb-3">
-                  <p className="text-xs text-blue-600 mb-1">Vendido por: <span className="font-medium text-blue-800">{product.seller || 'Power Ki Gym'}</span></p>
+                  <p className="text-xs text-blue-600 mb-1">Vendido por: <span className="font-medium text-blue-800">{product.sellerName || 'Power Ki Gym'}</span></p>
                   <p className={`text-sm font-medium ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-500'}`}>
                     {product.stockQuantity > 0 ? `${product.stockQuantity} disponibles` : 'Sin stock'}
                   </p>

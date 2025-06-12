@@ -16,10 +16,21 @@ const Login = ({ setCurrentPage }) => {
     try {
       const success = await login(username, password)
       if (success) {
-      setCurrentPage('catalog')
-    } else {
-      setError('Usuario o contraseña incorrectos')
-    }
+        // Force store the token in localStorage
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user && user.token) {
+          console.log('Setting token after login:', user.token);
+          localStorage.setItem('token', user.token);
+          
+          // Force reload the page to ensure clean state
+          window.location.href = '/#catalog';
+          return;
+        }
+        
+        setCurrentPage('catalog')
+      } else {
+        setError('Usuario o contraseña incorrectos')
+      }
     } catch (error) {
       console.error('Login error:', error)
       setError('Error de conexión con el servidor')

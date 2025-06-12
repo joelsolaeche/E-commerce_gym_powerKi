@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 import config from '../config'
 
 const UserContext = createContext()
@@ -19,8 +19,29 @@ export const UserProvider = ({ children }) => {
     { id: 2, username: 'buyer1', email: 'athlete@powerkigym.com', password: 'buyer123', firstName: 'Ana', lastName: 'Atleta', type: 'buyer' }
   ])
 
+  // Initialize user from localStorage if available
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        
+        // Ensure token is in localStorage
+        if (parsedUser.token) {
+          localStorage.setItem('token', parsedUser.token);
+        }
+      } catch (e) {
+        console.error('Error parsing saved user:', e);
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
   const login = async (username, password) => {
     try {
+      console.log('Attempting login with:', username);
+      
       // Make API call to backend authentication endpoint
       const response = await fetch(`${config.API_BASE_URL}/api/v1/auth/authenticate`, {
         method: 'POST',
@@ -34,10 +55,12 @@ export const UserProvider = ({ children }) => {
       })
 
       if (!response.ok) {
-        return false
+        console.error('Login failed with status:', response.status);
+        return false;
       }
 
       const data = await response.json()
+      console.log('Login response:', data);
       
       // Get user type/role from backend response
       const userType = data.role === 'ADMIN' ? 'seller' : 'buyer'
@@ -54,8 +77,16 @@ export const UserProvider = ({ children }) => {
         token: data.accessToken
       }
       
-      setUser(loggedInUser)
-      return true
+      console.log('Setting user with role:', loggedInUser.role);
+      
+      // Store user in state
+      setUser(loggedInUser);
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('user', JSON.stringify(loggedInUser));
+      localStorage.setItem('token', loggedInUser.token);
+      
+      return true;
     } catch (error) {
       console.error('Login error:', error)
       return false
@@ -103,15 +134,26 @@ export const UserProvider = ({ children }) => {
       const data = await response.json();
       console.log('Registration successful, received data:', data);
       
-      // Still keep the user in local state for frontend functionality
+      // Create new user object
       const newUser = {
         id: data.userId,
-        ...userData,
+        username: userData.email,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        role: data.role,
+        type: userData.type,
         token: data.accessToken
       }
       
+      // Store user in state
       setUsers([...users, newUser]);
       setUser(newUser);
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('user', JSON.stringify(newUser));
+      localStorage.setItem('token', newUser.token);
+      
       return true;
     } catch (error) {
       console.error('Registration error:', error);
@@ -120,7 +162,9 @@ export const UserProvider = ({ children }) => {
   }
 
   const logout = () => {
-    setUser(null)
+    setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
   }
 
   const value = {
