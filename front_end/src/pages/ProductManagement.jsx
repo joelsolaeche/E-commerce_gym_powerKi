@@ -1,31 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useUser } from '../context/UserContext'
+import { useReduxProducts } from '../hooks'
 
-// Power Ki Gym products data for demonstration
-const initialProducts = [
-  {
-    id: 1,
-    name: 'Proteína Whey Gold Standard',
-    price: 45.00,
-    description: 'Proteína de suero de leche de la más alta calidad. 24g de proteína por porción.',
-    category: 'Suplementos',
-    stock: 25,
-    image: 'https://farmaciadelpuebloar.vtexassets.com/arquivos/ids/174764/PROTEINA-GOLD-STANDARD-OPTIMUM-NUTRITION-907-GR.jpg?v=638490612095100000'
-  },
-  {
-    id: 2,
-    name: 'Bandas Elásticas Set Completo',
-    price: 35.00,
-    description: 'Set de 5 bandas de resistencia con diferentes niveles de resistencia.',
-    category: 'Accesorios',
-    stock: 15,
-    image: 'https://sportfitness.co/cdn/shop/collections/set-de-bandas-elasticas-x5-sportfitness.jpg?v=1670008040'
-  }
-]
 
 const ProductManagement = ({ setCurrentPage }) => {
   const { user } = useUser()
-  const [products, setProducts] = useState(initialProducts)
+  const {
+    products: productsData = [],
+    createProduct,
+    updateProduct,
+    deleteProduct,
+    refetchProducts,
+    isLoading
+  } = useReduxProducts()
+  const [products, setProducts] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [formData, setFormData] = useState({
@@ -36,8 +24,12 @@ const ProductManagement = ({ setCurrentPage }) => {
     stock: '',
     image: ''
   })
-  // Power Ki Gym categories for dropdown
-  const categories = ['Suplementos', 'Accesorios']  // Check if user is a seller
+
+  useEffect(() => {
+    setProducts(productsData)
+  }, [productsData])
+  // Categories for dropdown based on loaded products
+  const categories = Array.from(new Set(productsData.map(p => p.category?.description || p.category)))
   if (!user || user.type !== 'seller') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50 flex items-center justify-center px-4">
@@ -68,27 +60,26 @@ const ProductManagement = ({ setCurrentPage }) => {
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (editingProduct) {
-      // Update existing product
-      setProducts(prev => prev.map(product => 
-        product.id === editingProduct.id 
-          ? { ...formData, id: editingProduct.id, price: parseFloat(formData.price), stock: parseInt(formData.stock) }
-          : product
-      ))
+      await updateProduct(editingProduct.id, {
+        ...formData,
+        price: parseFloat(formData.price),
+        stockQuantity: parseInt(formData.stock)
+      })
       setEditingProduct(null)
     } else {
-      // Add new product
-      const newProduct = {
+      await createProduct({
         ...formData,
-        id: products.length + 1,
         price: parseFloat(formData.price),
-        stock: parseInt(formData.stock)
-      }
-      setProducts(prev => [...prev, newProduct])
+        originalPrice: parseFloat(formData.price),
+        stockQuantity: parseInt(formData.stock)
+      })
     }
+
+    refetchProducts()
 
     // Reset form
     setFormData({
@@ -109,15 +100,16 @@ const ProductManagement = ({ setCurrentPage }) => {
       price: product.price.toString(),
       description: product.description,
       category: product.category,
-      stock: product.stock.toString(),
+      stock: product.stockQuantity?.toString() || '',
       image: product.image
     })
     setShowAddForm(true)
   }
 
-  const handleDelete = (productId) => {
+  const handleDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      setProducts(prev => prev.filter(product => product.id !== productId))
+      await deleteProduct(productId)
+      refetchProducts()
     }
   }
 
@@ -357,9 +349,9 @@ const ProductManagement = ({ setCurrentPage }) => {
                         </span>
                       </td>                      <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-800">
-                          {product.stock} unidades
+                          {product.stockQuantity} unidades
                         </div>
-                        {product.stock < 10 && (
+                        {product.stockQuantity < 10 && (
                           <div className="text-xs text-red-500 font-semibold animate-pulse">⚠️ Stock Crítico</div>
                         )}
                       </td>
@@ -406,3 +398,4 @@ const ProductManagement = ({ setCurrentPage }) => {
 }
 
 export default ProductManagement
+
