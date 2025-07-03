@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ProductManagement from './pages/ProductManagement';
 import ProductAdminPage from './pages/ProductAdminPage';
+import PaymentPage from './pages/PaymentPage';
 import { CartProvider } from './context/CartContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -32,6 +33,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/admin/products" element={<ProductManagement />} />
                 <Route path="/admin/product-management" element={<ProductAdminPage />} />
+                <Route path="/payment" element={<PaymentPage />} />
               </Routes>
             </main>
             <Footer />

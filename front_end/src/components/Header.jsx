@@ -6,13 +6,19 @@ const Header = ({ currentPage, setCurrentPage }) => {
   const { user, logout } = useUser()
   const { getCartItemsCount } = useCart()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  
+  // Use state-based navigation
+  const handleNavigation = (page) => {
+    setCurrentPage(page)
+    setIsMobileMenuOpen(false)
+  }
   return (
     <header className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 backdrop-blur-md shadow-2xl border-b-2 border-orange-500/30 sticky top-0 z-40">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">          {/* Logo */}
           <div className="flex items-center">
             <button
-              onClick={() => setCurrentPage('catalog')}
+              onClick={() => handleNavigation('catalog')}
               className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-orange-400 via-yellow-300 to-orange-500 bg-clip-text text-transparent hover:from-orange-300 hover:via-yellow-200 hover:to-orange-400 transition-all duration-200 flex items-center gap-1 sm:gap-2 hover:scale-105 transform"
             >
               {/* Dragon Ball Character Image */}
@@ -38,7 +44,7 @@ const Header = ({ currentPage, setCurrentPage }) => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
             <button
-              onClick={() => setCurrentPage('catalog')}
+              onClick={() => handleNavigation('catalog')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 transform ${
                 currentPage === 'catalog'
                   ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
@@ -50,7 +56,7 @@ const Header = ({ currentPage, setCurrentPage }) => {
             
             {user && user.type === 'seller' && (
               <button
-                onClick={() => setCurrentPage('manage-products')}
+                onClick={() => handleNavigation('manage-products')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 transform ${
                   currentPage === 'manage-products'
                     ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
@@ -64,7 +70,7 @@ const Header = ({ currentPage, setCurrentPage }) => {
           <div className="flex items-center space-x-3">
             {/* Cart */}
             <button
-              onClick={() => setCurrentPage('cart')}
+              onClick={() => handleNavigation('cart')}
               className="relative p-2 text-orange-200 hover:text-orange-100 transition-all duration-200 rounded-lg hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-400/50 transform hover:scale-110"
             >
               <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,6 +82,8 @@ const Header = ({ currentPage, setCurrentPage }) => {
                 </span>
               )}
             </button>
+
+
 
             {/* Desktop User actions */}
             {user ? (
@@ -111,13 +119,13 @@ const Header = ({ currentPage, setCurrentPage }) => {
               <>
                 <div className="hidden sm:flex items-center space-x-2">
                   <button
-                    onClick={() => setCurrentPage('login')}
+                    onClick={() => handleNavigation('login')}
                     className="px-4 py-2 text-sm font-medium text-orange-200 hover:text-orange-100 transition-all duration-200 rounded-lg hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-400/50 transform hover:scale-105"
                   >
                     ⚡ Iniciar Sesión
                   </button>
                   <button
-                    onClick={() => setCurrentPage('register')}
+                    onClick={() => handleNavigation('register')}
                     className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl border border-orange-400 transform hover:scale-105 animate-super-saiyan-glow"
                   >
                     🌟 Registrarse
@@ -142,10 +150,7 @@ const Header = ({ currentPage, setCurrentPage }) => {
           <div className="md:hidden border-t border-orange-500/30 py-4 bg-gradient-to-b from-blue-800/90 to-indigo-900/90 backdrop-blur-sm rounded-b-lg shadow-xl">
             <div className="flex flex-col space-y-2">
               <button
-                onClick={() => {
-                  setCurrentPage('catalog')
-                  setIsMobileMenuOpen(false)
-                }}
+                onClick={() => handleNavigation('catalog')}
                 className={`text-left px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-2 transform hover:scale-105 ${
                   currentPage === 'catalog'
                     ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
@@ -157,10 +162,7 @@ const Header = ({ currentPage, setCurrentPage }) => {
               
               {user && user.type === 'seller' && (
                 <button
-                  onClick={() => {
-                    setCurrentPage('manage-products')
-                    setIsMobileMenuOpen(false)
-                  }}
+                  onClick={() => handleNavigation('manage-products')}
                   className={`text-left px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-2 transform hover:scale-105 ${
                     currentPage === 'manage-products'
                       ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
@@ -192,19 +194,13 @@ const Header = ({ currentPage, setCurrentPage }) => {
               ) : (
                 <div className="px-2 py-2 space-y-2">
                   <button
-                    onClick={() => {
-                      setCurrentPage('login')
-                      setIsMobileMenuOpen(false)
-                    }}
+                    onClick={() => handleNavigation('login')}
                     className="w-full text-left px-4 py-3 text-sm font-medium text-orange-200 hover:text-orange-100 transition-all duration-200 bg-gradient-to-r from-blue-800/50 to-indigo-900/50 rounded-lg hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-400/50 transform hover:scale-105"
                   >
                     ⚡ Iniciar Sesión
                   </button>
                   <button
-                    onClick={() => {
-                      setCurrentPage('register')
-                      setIsMobileMenuOpen(false)
-                    }}
+                    onClick={() => handleNavigation('register')}
                     className="w-full text-left px-4 py-3 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400 rounded-lg transition-all duration-200 shadow-lg border border-orange-400 transform hover:scale-105 animate-super-saiyan-glow"
                   >
                     🌟 Registrarse

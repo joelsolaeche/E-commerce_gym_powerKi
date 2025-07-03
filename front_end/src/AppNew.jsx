@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Cart from './pages/Cart'
 import ProductManagement from './pages/ProductManagement'
+import PaymentPage from './pages/PaymentPage'
 import { CartProvider } from './context/CartContext'
 import { UserProvider } from './context/UserContext'
 import { ToastContainer } from 'react-toastify'
@@ -24,6 +25,8 @@ function App() {
         return <Cart setCurrentPage={setCurrentPage} />
       case 'manage-products':
         return <ProductManagement setCurrentPage={setCurrentPage} />
+      case 'payment':
+        return <PaymentPage setCurrentPage={setCurrentPage} />
       case 'catalog':
       default:
         return <ProductCatalog setCurrentPage={setCurrentPage} />

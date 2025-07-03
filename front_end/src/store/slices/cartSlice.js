@@ -40,9 +40,8 @@ export const cartApi = api.injectEndpoints({
     }),
     createOrder: builder.mutation({
       query: (orderData) => {
-        // Get fresh token for every order creation
-        const token = localStorage.getItem('token');
-        console.log('Order creation with token:', token ? 'present' : 'missing');
+        // No localStorage usage for security
+        console.log('Order creation request');
         
         return {
           url: '/orders',
@@ -50,28 +49,13 @@ export const cartApi = api.injectEndpoints({
           body: orderData,
         };
       },
-      // Enhanced error handling for better user experience
+      // Simplified error handling without localStorage
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
         } catch (error) {
           console.error('Order creation error:', error);
-          // If it's an auth error, try to refresh the token from localStorage
-          if (error?.error?.status === 401 || error?.error?.status === 403) {
-            console.log('Authentication error during order creation, trying to refresh token');
-            try {
-              const userJson = localStorage.getItem('user');
-              if (userJson) {
-                const user = JSON.parse(userJson);
-                if (user && user.token) {
-                  console.log('Found token in user object, refreshing');
-                  localStorage.setItem('token', user.token);
-                }
-              }
-            } catch (e) {
-              console.error('Error refreshing token:', e);
-            }
-          }
+          // No localStorage token refresh for security
         }
       },
       invalidatesTags: ['Cart', 'Orders'],

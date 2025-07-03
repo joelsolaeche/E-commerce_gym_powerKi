@@ -14,12 +14,7 @@ const Cart = ({ setCurrentPage }) => {
   const [isProcessing, setIsProcessing] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
 
-  // Make sure token is in localStorage for API calls
-  useEffect(() => {
-    if (user && user.token) {
-      localStorage.setItem('token', user.token);
-    }
-  }, [user]);
+  // No localStorage usage for security reasons
 
   const handleCheckout = () => {
     // Make sure we have a user first
@@ -34,19 +29,7 @@ const Cart = ({ setCurrentPage }) => {
       return
     }
     
-    // Try to refresh token before checkout if exists
-    const savedUser = localStorage.getItem('user')
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser)
-        if (parsedUser.token) {
-          console.log('Refreshing token before checkout...');
-          localStorage.setItem('token', parsedUser.token);
-        }
-      } catch (e) {
-        console.error('Error parsing saved user:', e);
-      }
-    }
+    // No localStorage usage for security reasons
     
     setShowCheckoutModal(true)
     setCheckoutError('')
@@ -515,7 +498,18 @@ const Cart = ({ setCurrentPage }) => {
               </div>
             )}
               <button
-              onClick={handleCheckout}
+              onClick={() => {
+                if (!user) {
+                  setCurrentPage('login')
+                  return
+                }
+                if (cart.length === 0) {
+                  toast.error('Tu carrito está vacío')
+                  return
+                }
+                // Ir directamente a la página de pago
+                setCurrentPage('payment')
+              }}
               className="w-full text-white py-4 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 font-bold text-lg shadow-2xl transform hover:scale-105 hover:shadow-2xl"
               style={{ background: 'linear-gradient(135deg, #FF6F00 0%, #FFA500 100%)' }}
               onMouseEnter={(e) => {
@@ -529,7 +523,7 @@ const Cart = ({ setCurrentPage }) => {
                 e.target.style.color = 'white'
               }}
             >
-              {user ? '🛒 ¡Finalizar Entrenamiento!' : '🔐 Despertar Poder Interno'}
+              {user ? '💳 ¡Proceder al Pago! 🔥' : '🔐 Despertar Poder Interno'}
             </button>
               <div className="mt-4 text-center">
               <button

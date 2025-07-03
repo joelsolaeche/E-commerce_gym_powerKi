@@ -19,24 +19,8 @@ export const UserProvider = ({ children }) => {
     { id: 2, username: 'buyer1', email: 'athlete@powerkigym.com', password: 'buyer123', firstName: 'Ana', lastName: 'Atleta', type: 'buyer' }
   ])
 
-  // Initialize user from localStorage if available
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        
-        // Ensure token is in localStorage
-        if (parsedUser.token) {
-          localStorage.setItem('token', parsedUser.token);
-        }
-      } catch (e) {
-        console.error('Error parsing saved user:', e);
-        localStorage.removeItem('user');
-      }
-    }
-  }, []);
+  // No longer initialize from localStorage for security
+  // User will need to log in again after page refresh
 
   const login = async (username, password) => {
     try {
@@ -79,12 +63,8 @@ export const UserProvider = ({ children }) => {
       
       console.log('Setting user with role:', loggedInUser.role);
       
-      // Store user in state
+      // Store user in state only (no localStorage for security)
       setUser(loggedInUser);
-      
-      // Store in localStorage for persistence
-      localStorage.setItem('user', JSON.stringify(loggedInUser));
-      localStorage.setItem('token', loggedInUser.token);
       
       return true;
     } catch (error) {
@@ -146,13 +126,9 @@ export const UserProvider = ({ children }) => {
         token: data.accessToken
       }
       
-      // Store user in state
+      // Store user in state only (no localStorage for security)
       setUsers([...users, newUser]);
       setUser(newUser);
-      
-      // Store in localStorage for persistence
-      localStorage.setItem('user', JSON.stringify(newUser));
-      localStorage.setItem('token', newUser.token);
       
       return true;
     } catch (error) {
@@ -163,8 +139,7 @@ export const UserProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    // No need to clear localStorage as we're not using it for security
   }
 
   const value = {

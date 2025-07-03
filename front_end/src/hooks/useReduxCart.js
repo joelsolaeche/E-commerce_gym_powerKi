@@ -125,10 +125,7 @@ export const useReduxCart = () => {
       return { success: false, error: 'You must be logged in to create an order' };
     }
     
-    // Make sure the token is in localStorage
-    if (user && user.token) {
-      localStorage.setItem('token', user.token);
-    }
+    // No localStorage usage for security
     
     try {
       // Make sure we use the user ID from the context if available

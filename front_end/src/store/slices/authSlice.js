@@ -29,7 +29,7 @@ const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
-    token: localStorage.getItem('token') || null,
+    token: null, // No localStorage for security
     isAuthenticated: false,
     isLoading: false,
     error: null,
@@ -40,13 +40,13 @@ const authSlice = createSlice({
       state.user = user;
       state.token = token;
       state.isAuthenticated = true;
-      localStorage.setItem('token', token);
+      // No localStorage for security
     },
     logout: (state) => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
-      localStorage.removeItem('token');
+      // No localStorage for security
     },
     setError: (state, action) => {
       state.error = action.payload;

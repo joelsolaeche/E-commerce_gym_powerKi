@@ -45,17 +45,7 @@ export const useTokenVerification = (options = {}) => {
       return false;
     }
     
-    // Set token in localStorage
-    localStorage.setItem('token', user.token);
-    
-    // Verify token was set correctly
-    const storedToken = localStorage.getItem('token');
-    if (storedToken !== user.token) {
-      console.error('TokenVerification: Token not properly stored in localStorage');
-      setIsVerified(false);
-      setError('Token storage error');
-      return false;
-    }
+    // No localStorage usage for security
     
     console.log('TokenVerification: Token verified successfully');
     setIsVerified(true);
