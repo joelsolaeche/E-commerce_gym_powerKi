@@ -176,11 +176,656 @@ lets go
 
 _**Assistant**_
 
+```diff
+    const [isProcessing, setIsProcessing] = useState(false)
+    const [checkoutError, setCheckoutError] = useState('')
++   const [cardDetails, setCardDetails] = useState({
++     number: '',
++     name: '',
++     expiry: '',
++     cvc: ''
++   });
++   const [cardErrors, setCardErrors] = useState({});
+  
+    // Make sure token is in localStorage for API calls
+```
+
+```diff
+      setCheckoutError('')
+    }
++ 
++   const validateCard = () => {
++     const errors = {};
++     if ((paymentMethod === 'TARJETA_DEBITO' || paymentMethod === 'TARJETA_CREDITO')) {
++       if (!/^\d{16}$/.test(cardDetails.number.replace(/\s/g, ''))) {
++         errors.number = 'Número de tarjeta inválido';
++       }
++       if (!/^\d{2}\/\d{2}$/.test(cardDetails.expiry)) {
++         errors.expiry = 'Fecha inválida (MM/AA)';
++       }
++       if (!/^\d{3,4}$/.test(cardDetails.cvc)) {
++         errors.cvc = 'CVC inválido';
++       }
++       if (!cardDetails.name.trim()) {
++         errors.name = 'Nombre requerido';
++       }
++     }
++     setCardErrors(errors);
++     return Object.keys(errors).length === 0;
++   };
+  
+    // COMPLETELY REWRITTEN with a very simple approach
+```
+
+```diff
+        return
+      }
++     
++     if ((paymentMethod === 'TARJETA_DEBITO' || paymentMethod === 'TARJETA_CREDITO') && !validateCard()) {
++       setCheckoutError('Por favor corrige los datos de la tarjeta.');
++       return;
++     }
+      
+      try {
+```
+
+```diff
+                  id="paymentMethod"
+                  value={paymentMethod}
+-                 onChange={(e) => setPaymentMethod(e.target.value)}
++                 onChange={e => setPaymentMethod(e.target.value)}
+                  className="w-full p-2 rounded-lg text-sm"
+                  style={{ border: '1px solid #FFD700' }}
+```
+
+```diff
+                </select>
+              </div>
++             {(paymentMethod === 'TARJETA_DEBITO' || paymentMethod === 'TARJETA_CREDITO') && (
++               <div className="p-4 rounded-lg border-2 space-y-4 animate-fade-in" style={{ background: 'linear-gradient(135deg, #fffbe6 0%, #fff3e0 100%)', borderColor: '#FFA500' }}>
++                 <h4 className="font-bold mb-2 text-orange-700 flex items-center">
++                   <svg className="w-5 h-5 mr-2 text-orange-400" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" /></svg>
++                   Datos de la Tarjeta
++                 </h4>
++                 <div className="space-y-2">
++                   <input
++                     type="text"
++                     inputMode="numeric"
++                     maxLength={19}
++                     placeholder="Número de tarjeta"
++                     className={`w-full p-2 rounded-lg border-2 text-sm focus:ring-2 focus:ring-orange-400 ${cardErrors.number ? 'border-red-400' : 'border-orange-200'}`}
++                     value={cardDetails.number}
++                     onChange={e => setCardDetails({ ...cardDetails, number: e.target.value.replace(/[^\d]/g, '').replace(/(.{4})/g, '$1 ').trim() })}
++                   />
++                   {cardErrors.number && <p className="text-xs text-red-500 font-bold">{cardErrors.number}</p>}
++                   <div className="flex space-x-2">
++                     <input
++                       type="text"
++                       maxLength={5}
++                       placeholder="MM/AA"
++                       className={`w-1/2 p-2 rounded-lg border-2 text-sm focus:ring-2 focus:ring-orange-400 ${cardErrors.expiry ? 'border-red-400' : 'border-orange-200'}`}
++                       value={cardDetails.expiry}
++                       onChange={e => setCardDetails({ ...cardDetails, expiry: e.target.value.replace(/[^\d/]/g, '').replace(/(\d{2})(\d{0,2})/, (m, m1, m2) => m2 ? `${m1}/${m2}` : m1) })}
++                     />
++                     <input
++                       type="text"
++                       maxLength={4}
++                       placeholder="CVC"
++                       className={`w-1/2 p-2 rounded-lg border-2 text-sm focus:ring-2 focus:ring-orange-400 ${cardErrors.cvc ? 'border-red-400' : 'border-orange-200'}`}
++                       value={cardDetails.cvc}
++                       onChange={e => setCardDetails({ ...cardDetails, cvc: e.target.value.replace(/[^\d]/g, '') })}
++                     />
++                   </div>
++                   <div className="flex flex-col">
++                     {cardErrors.expiry && <p className="text-xs text-red-500 font-bold">{cardErrors.expiry}</p>}
++                     {cardErrors.cvc && <p className="text-xs text-red-500 font-bold">{cardErrors.cvc}</p>}
++                   </div>
++                   <input
++                     type="text"
++                     placeholder="Nombre en la tarjeta"
++                     className={`w-full p-2 rounded-lg border-2 text-sm focus:ring-2 focus:ring-orange-400 ${cardErrors.name ? 'border-red-400' : 'border-orange-200'}`}
++                     value={cardDetails.name}
++                     onChange={e => setCardDetails({ ...cardDetails, name: e.target.value })}
++                   />
++                   {cardErrors.name && <p className="text-xs text-red-500 font-bold">{cardErrors.name}</p>}
++                 </div>
++                 <div className="flex items-center space-x-2 mt-2">
++                   <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M2 7a2 2 0 012-2h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7zm2 0v10h16V7H4zm2 2h2v2H6V9zm0 4h2v2H6v-2zm4-4h8v2h-8V9zm0 4h8v2h-8v-2z" /></svg>
++                   <span className="text-xs text-gray-500">Tus datos están protegidos y no se almacenan.</span>
++                 </div>
++               </div>
++             )}
+            </div>
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+```
+
+---
+
+✅ The modern credit/debit card input form has been added to your checkout modal!  
+- It appears only when "Tarjeta de Débito" or "Tarjeta de Crédito" is selected.
+- It includes card number, expiry, CVC, and cardholder name fields, with validation and Tailwind styling.
+- The checkout is blocked if the card data is invalid.
+
+You can now test the checkout flow in your app.  
+Would you like to further customize the card UI, or connect this to a real payment gateway in the future?
+
+---
+
+_**User**_
+
+i would like to procceed with the card input in another page and make it more modern
+
+---
+
+_**Assistant**_
+
 
 
 ---
 
+Cancelled
 
+---
+
+<details>
+            <summary>Searched codebase "router" • **10** results</summary>
+        
+| File |
+|------|
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+
+</details>
+
+---
+
+<details>
+            <summary>Searched codebase "App.jsx" • **5** results</summary>
+        
+| File |
+|------|
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+
+</details>
+
+---
+
+Read file: front_end/src/App.jsx
+
+---
+
+```diff
+  import { ToastContainer } from 'react-toastify';
+  import 'react-toastify/dist/ReactToastify.css';
++ import PaymentPage from './pages/PaymentPage';
+  
+  function App() {
+```
+
+```diff
+                  <Route path="/admin/products" element={<ProductManagement />} />
+                  <Route path="/admin/product-management" element={<ProductAdminPage />} />
++                 <Route path="/payment" element={<PaymentPage />} />
+                </Routes>
+              </main>
+```
+
+---
+
+Read file: front_end/src/pages/Cart.jsx
+
+---
+
+Cancelled
+
+---
+
+You now have a modern, dedicated payment page for card input!  
+**How it works:**
+- After confirming the order in the cart (with a card payment method), the user is redirected to `/payment`.
+- The card input form is no longer shown in the cart modal, but on the new, more modern PaymentPage.
+- Order/payment info is passed via navigation state for future use (e.g., submitting the order after payment).
+
+**Next steps you can take:**
+- Further enhance the PaymentPage UI (animations, card brand icons, etc.).
+- Use the passed state (`cart`, `user`, `paymentMethod`) in PaymentPage to submit the order after payment.
+- Add a payment success/failure page or modal.
+
+Let me know if you want to further customize the payment experience or need help connecting the payment to your backend!
+
+---
+
+_**User**_
+
+[plugin:vite:import-analysis] Failed to resolve import "react-router-dom" from "src/pages/Cart.jsx". Does the file exist?
+C:/Users/joel_/OneDrive/Escritorio/apps gym/front_end/src/pages/Cart.jsx:6:28
+21 |  import { useReduxCart, useReduxProducts } from "../hooks";
+22 |  import { toast } from "react-toastify";
+23 |  import { useNavigate } from "react-router-dom";
+   |                               ^
+24 |  const Cart = ({ setCurrentPage }) => {
+25 |    _s();
+    at TransformPluginContext._formatLog (file:///C:/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:42499:41)
+    at TransformPluginContext.error (file:///C:/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:42496:16)
+    at normalizeUrl (file:///C:/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:40475:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///C:/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:40594:37
+    at async Promise.all (index 8)
+    at async TransformPluginContext.transform (file:///C:/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:40521:7)
+    at async EnvironmentPluginContainer.transform (file:///C:/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:42294:18)
+    at async loadAndTransform (file:///C:/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:35735:27)
+    at async viteTransformMiddleware (file:///C:/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:37250:24
+Click outside, press Esc key, or fix the code to dismiss.
+You can also disable this overlay by setting server.hmr.overlay to false in vite.config.js.
+
+---
+
+_**Assistant**_
+
+```bash
+npm install react-router-dom
+```
+
+```
+PS C:\Users\joel_\OneDrive\Escritorio\apps gym> npm install react-router-dom
+PS C:\Users\joel_\OneDrive\Escritorio\apps gym> npm install react-router-dom  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+added 4 packages, and audited 10 packages in 3s
+
+found 0 vulnerabilities
+PS C:\Users\joel_\OneDrive\Escritorio\apps gym>
+```
+
+---
+
+The error occurred because `react-router-dom` was not installed in your frontend project. I have now installed it for you.
+
+You can now use `useNavigate`, `useLocation`, and all routing features in your React components without issues. Please restart your dev server if it was running during the install.
+
+Let me know if you encounter any more errors or if you want to continue improving the payment flow!
+
+---
+
+_**User**_
+
+react-dom_client.js?v=aa737197:17987 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+api.js:33 API: Setting Authorization header
+react-router-dom.js?v=aa737197:531 Uncaught Error: useNavigate() may be used only in the context of a <Router> component.
+    at invariant (react-router-dom.js?v=aa737197:531:11)
+    at useNavigateUnstable (react-router-dom.js?v=aa737197:5216:3)
+    at useNavigate (react-router-dom.js?v=aa737197:5213:46)
+    at Cart (Cart.jsx:17:20)
+    at react-stack-bottom-frame (react-dom_client.js?v=aa737197:17424:20)
+    at renderWithHooks (react-dom_client.js?v=aa737197:4206:24)
+    at updateFunctionComponent (react-dom_client.js?v=aa737197:6619:21)
+    at beginWork (react-dom_client.js?v=aa737197:7654:20)
+    at runWithFiberInDEV (react-dom_client.js?v=aa737197:1485:72)
+    at performUnitOfWork (react-dom_client.js?v=aa737197:10868:98)
+react-dom_client.js?v=aa737197:6229 An error occurred in the <Cart> component.
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries.
+
+defaultOnUncaughtError @ react-dom_client.js?v=aa737197:6229
+
+
+---
+
+_**Assistant**_
+
+The error `useNavigate() may be used only in the context of a <Router> component` means that the `Cart` component is being rendered outside of a `<Router>` context. In your `App.jsx`, the `<Cart />` route is correctly inside a `<Router>`, so this error usually happens if:
+
+- You are rendering `<Cart />` directly somewhere else (not via a route).
+- You are using `<Cart />` in a test or storybook file without a router.
+- You are using an old or custom entry point that does not wrap your app in a router.
+
+**How to fix:**
+
+1. **Check your entry point:**  
+   Make sure your app is started from `App.jsx` and not rendering `<Cart />` directly anywhere else.
+
+2. **Check for direct usage:**  
+   If you are using `<Cart />` in another component or test, ensure it is always wrapped in a `<Router>`.
+
+3. **If you want to use Cart outside a router (for example, in a modal or as a standalone component), wrap it like this:**
+   ```jsx
+   import { BrowserRouter } from 'react-router-dom';
+   <BrowserRouter>
+     <Cart />
+   </BrowserRouter>
+   ```
+
+4. **If you are using a custom `setCurrentPage` prop to switch pages manually,**  
+   you should now use navigation via `useNavigate` and routes, not manual page switching.
+
+---
+
+**Summary of what to check in your project:**
+- Only use `<Cart />` via `<Route path="/cart" element={<Cart />} />` in `App.jsx`.
+- Remove any direct renderings of `<Cart />` outside the router.
+- If you need to render it elsewhere, wrap it in a `<Router>`.
+
+Would you like help searching for all usages of `<Cart` in your codebase to find any direct usages?
+
+---
+
+_**User**_
+
+react-router-dom.js?v=aa737197:531 Uncaught Error: useNavigate() may be used only in the context of a <Router> component.
+    at Cart (Cart.jsx:17:20)
+
+react-dom_client.js?v=aa737197:6229 An error occurred in the <Cart> component.
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries.
+defaultOnUncaughtError	@	react-dom_client.js?v=aa737197:6229
+
+---
+
+_**Assistant**_
+
+<details>
+            <summary>Grep search for "<Cart" • **3** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///c%3A/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/src/context/CartContext.jsx` | L86 | `<CartContext.Provider value={value}>` |
+| `file:///c%3A/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/src/AppNew.jsx` | L23 | `return <Cart setCurrentPage={setCurrentPage} />` |
+| `file:///c%3A/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/src/AppNew.jsx` | L33 | `<CartProvider>` |
+| `file:///c%3A/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/src/App.jsx` | L21 | `<CartProvider>` |
+| `file:///c%3A/Users/joel_/OneDrive/Escritorio/apps%20gym/front_end/src/App.jsx` | L30 | `<Route path="/cart" element={<Cart />} />` |
+
+</details>
+
+---
+
+Read file: front_end/src/AppNew.jsx
+
+---
+
+The error is caused by your `AppNew.jsx` file, which renders `<Cart />` (and other pages) directly, **not** via a `<Router>`. This means `useNavigate` and other router hooks will not work in this setup.
+
+### How to Fix
+
+**You have two options:**
+
+---
+
+#### 1. Use Only the Route-Based App (`App.jsx`)
+
+- Your `App.jsx` is already set up with `<Router>` and `<Routes>`.  
+- Use `App.jsx` as your main entry point, not `AppNew.jsx`.
+- Remove or stop using `AppNew.jsx` for your main app.
+
+---
+
+#### 2. If You Must Use `AppNew.jsx` (Not Recommended)
+
+- You must wrap your entire app in a `<BrowserRouter>` from `react-router-dom` at the top level, like this:
+
+```jsx
+import { BrowserRouter } from 'react-router-dom';
+// ...existing imports
+
+function App() {
+  // ...existing code
+  return (
+    <BrowserRouter>
+      {/* ...existing JSX */}
+    </BrowserRouter>
+  );
+}
+```
+- But your navigation logic (`setCurrentPage`) is not compatible with router navigation.  
+  You should migrate to using `useNavigate` and `<Routes>` instead.
+
+---
+
+### **Recommended Solution**
+
+- Use `App.jsx` as your main app entry point.
+- Remove or archive `AppNew.jsx` to avoid confusion.
+- Use route navigation everywhere (`useNavigate`, `<Routes>`, etc.).
+
+---
+
+Would you like help removing `AppNew.jsx` and ensuring your app uses only the modern, route-based navigation?
+
+---
+
+_**User**_
+
+react-dom_client.js?v=aa737197:17987 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+api.js:33 API: Setting Authorization header
+react-router-dom.js?v=aa737197:531 Uncaught Error: useNavigate() may be used only in the context of a <Router> component.
+    at invariant (react-router-dom.js?v=aa737197:531:11)
+    at useNavigateUnstable (react-router-dom.js?v=aa737197:5216:3)
+    at useNavigate (react-router-dom.js?v=aa737197:5213:46)
+    at Cart (Cart.jsx:17:20)
+    at react-stack-bottom-frame (react-dom_client.js?v=aa737197:17424:20)
+    at renderWithHooks (react-dom_client.js?v=aa737197:4206:24)
+    at updateFunctionComponent (react-dom_client.js?v=aa737197:6619:21)
+    at beginWork (react-dom_client.js?v=aa737197:7654:20)
+    at runWithFiberInDEV (react-dom_client.js?v=aa737197:1485:72)
+    at performUnitOfWork (react-dom_client.js?v=aa737197:10868:98)
+react-dom_client.js?v=aa737197:6229 An error occurred in the <Cart> component.
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries.
+
+defaultOnUncaughtError @ react-dom_client.js?v=aa737197:6229
+
+
+---
+
+_**Assistant**_
+
+You are still seeing the error because your app is running from a file (`AppNew.jsx`) that does **not** use a `<Router>`, and it renders `<Cart />` directly. The `useNavigate` hook (and all router hooks) **require** the component to be inside a `<Router>`.
+
+### How to Fix This (Step-by-Step):
+
+#### 1. **Make Sure You Are Using `App.jsx` as Your Main App**
+
+- Your `App.jsx` is set up correctly with `<Router>`, `<Routes>`, and route-based navigation.
+- Your `AppNew.jsx` is **not** compatible with router navigation and should not be used as the entry point.
+
+#### 2. **Check Your `main.jsx` (or `index.jsx`) Entry Point**
+
+Open `front_end/src/main.jsx` (or `index.jsx`) and make sure it looks like this:
+
+```jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App'; // <--- Make sure this is App, NOT AppNew
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+```
+
+If it says `import App from './AppNew'`, **change it to** `import App from './App'`.
+
+#### 3. **Restart Your Dev Server**
+
+After making this change, stop and restart your dev server to ensure the correct entry point is used.
+
+---
+
+### Why This Works
+
+- `App.jsx` wraps everything in a `<Router>`, so `useNavigate` and all router features work.
+- `AppNew.jsx` does not use a router, so router hooks will always fail there.
+
+---
+
+**Summary:**  
+- Use only `App.jsx` as your main app.
+- Do not use `AppNew.jsx` as your entry point.
+- Make sure your entry file (`main.jsx` or `index.jsx`) imports `App` from `./App`.
+
+---
+
+Would you like me to check or update your `main.jsx` for you?
+
+---
+
+_**User**_
+
+can you do that for me
+
+---
+
+_**Assistant**_
+
+<details>
+            <summary>Searched codebase "main.jsx" • **1** results</summary>
+        
+| File |
+|------|
+| `undefined` |
+
+</details>
+
+---
+
+Read file: front_end/src/main.jsx
+
+---
+
+Cancelled
+
+---
+
+Your app is now set to use `App.jsx` as the main entry point, which is fully compatible with React Router and modern navigation.
+
+**What was changed:**
+- The entry file (`main.jsx`) now imports `App` from `./App` (not `AppNew.jsx`).
+- The extra `<Provider store={store}>` was removed, since `App.jsx` already provides the store.
+
+**Next steps:**
+1. Save all files and restart your dev server.
+2. Your navigation and payment flow should now work without the router error.
+
+Let me know if you see any more issues or if you want to clean up/remove `AppNew.jsx`!
+
+---
+
+_**User**_
+
+react-dom_client.js?v=aa737197:17987 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+UserContext.jsx:9 Uncaught Error: useUser must be used within a UserProvider
+    at useUser (UserContext.jsx:9:11)
+    at Header (Header.jsx:6:28)
+    at react-stack-bottom-frame (react-dom_client.js?v=aa737197:17424:20)
+    at renderWithHooks (react-dom_client.js?v=aa737197:4206:24)
+    at updateFunctionComponent (react-dom_client.js?v=aa737197:6619:21)
+    at beginWork (react-dom_client.js?v=aa737197:7654:20)
+    at runWithFiberInDEV (react-dom_client.js?v=aa737197:1485:72)
+    at performUnitOfWork (react-dom_client.js?v=aa737197:10868:98)
+    at workLoopSync (react-dom_client.js?v=aa737197:10728:43)
+    at renderRootSync (react-dom_client.js?v=aa737197:10711:13)
+react-dom_client.js?v=aa737197:6229 An error occurred in the <Header> component.
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries.
+
+defaultOnUncaughtError @ react-dom_client.js?v=aa737197:6229
+
+
+---
+
+_**Assistant**_
+
+Read file: front_end/src/App.jsx
+
+---
+
+<details>
+            <summary>Searched codebase "UserProvider" • **0** results</summary>
+        
+No results found
+</details>
+
+---
+
+<details>
+            <summary>Searched codebase "UserProvider" • **0** results</summary>
+        
+No results found
+</details>
+
+---
+
+<details>
+            <summary>Searched codebase "UserContext" • **1** results</summary>
+        
+| File |
+|------|
+| `undefined` |
+
+</details>
+
+---
+
+Read file: front_end/src/context/UserContext.jsx
+
+---
+
+Cancelled
+
+---
+
+Your app is now correctly wrapped in `UserProvider`, so the `useUser` hook will work everywhere, including in the `Header` component.
+
+**What was fixed:**
+- Added `UserProvider` to `App.jsx` so all components have access to the user context.
+
+**Next steps:**
+- Save all files and restart your dev server.
+- The error about `useUser must be used within a UserProvider` should now be resolved.
+
+Let me know if you encounter any more issues or if you want to continue improving your payment flow!
 
 ---
 

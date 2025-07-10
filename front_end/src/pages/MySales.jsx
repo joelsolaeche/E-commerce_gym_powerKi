@@ -345,7 +345,7 @@ const MySales = ({ setCurrentPage }) => {
                           {formatDate(sale.orderDate || sale.createdAt)}
                         </p>
                         <p className="text-gray-600 text-sm">
-                          Cliente: {sale.customerName || 'Cliente'}
+                          Cliente: {sale.user ? `${sale.user.firstName} ${sale.user.lastName}` : 'Cliente no disponible'}
                         </p>
                       </div>
                       <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">

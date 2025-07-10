@@ -24,6 +24,18 @@ public class DataSeeder implements CommandLineRunner {
     
     @Override
     public void run(String... args) throws Exception {
+        // DISABLED: Since you already have data in your database
+        // Remove the comments below if you want to seed data
+        
+        System.out.println("DataSeeder: Skipping data seeding - using existing database data");
+        
+        // Check existing data
+        long categoryCount = categoryRepository.count();
+        long productCount = productRepository.count();
+        
+        System.out.println("Found " + categoryCount + " categories and " + productCount + " products in database");
+        
+        /*
         if (categoryRepository.count() == 0) {
             seedCategories();
         }
@@ -31,6 +43,7 @@ public class DataSeeder implements CommandLineRunner {
         if (productRepository.count() == 0) {
             seedProducts();
         }
+        */
     }
     
     private void seedCategories() {

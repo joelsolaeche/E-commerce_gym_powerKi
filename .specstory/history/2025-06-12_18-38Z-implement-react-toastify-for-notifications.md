@@ -1652,3 +1652,62 @@ Let me know if you need any other improvements or have questions about the imple
 
 ---
 
+_**User**_
+
+how can i run the backend?
+
+---
+
+_**Assistant**_
+
+To run the backend for your project, follow these steps:
+
+### 1. Prerequisites
+- **Java JDK 17 or later** installed (Spring Boot 3.x requires Java 17+).
+- **Maven** installed (or use the provided Maven wrapper scripts: `mvnw`/`mvnw.cmd`).
+
+### 2. Navigate to the Backend Directory
+Open a terminal and navigate to the backend server directory:
+```sh
+cd back_end/server
+```
+
+### 3. Run the Spring Boot Application
+
+#### **Option A: Using Maven Wrapper (Recommended)**
+On **Windows**:
+```sh
+mvnw.cmd spring-boot:run
+```
+On **Linux/Mac**:
+```sh
+./mvnw spring-boot:run
+```
+
+#### **Option B: Using Maven (if installed globally)**
+```sh
+mvn spring-boot:run
+```
+
+#### **Option C: Build and Run the JAR**
+1. Build the project:
+    ```sh
+    mvnw.cmd clean package
+    ```
+2. Run the generated JAR (replace `server-0.0.1-SNAPSHOT.jar` with the actual JAR name in `target/`):
+    ```sh
+    java -jar target/server-0.0.1-SNAPSHOT.jar
+    ```
+
+### 4. Access the Backend
+- By default, the backend will run on [http://localhost:8080](http://localhost:8080) unless configured otherwise.
+
+---
+
+**Tip:**  
+If you encounter any errors, make sure your Java and Maven versions are correct, and check for any missing dependencies or configuration issues in the console output.
+
+Would you like to run the backend now? I can prepare the command for you.
+
+---
+

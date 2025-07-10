@@ -226,7 +226,7 @@ const MyOrders = ({ setCurrentPage }) => {
                             ${order.totalAmount?.toFixed(2) || '0.00'}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {order.items?.length || 0} artículo(s)
+                            {order.orderProducts?.length || 0} artículo(s)
                           </p>
                         </div>
                       </div>
