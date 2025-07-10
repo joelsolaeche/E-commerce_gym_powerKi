@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import com.uade.tpo.demo.entity.Cart;
@@ -23,6 +24,7 @@ import java.util.logging.Logger;
 
 @RestController
 @RequestMapping("/orders")
+@CrossOrigin(origins = {"http://localhost:4002", "http://localhost:5173", "http://localhost:5174"})
 public class OrderController {
     
     private static final Logger logger = Logger.getLogger(OrderController.class.getName());
@@ -68,7 +70,7 @@ public class OrderController {
                     paymentMethod = PaymentMethod.valueOf(orderData.get("paymentMethod").toString());
                     logger.info("Using payment method: " + paymentMethod);
                 } catch (IllegalArgumentException e) {
-                    logger.warning("Invalid payment method: " + orderData.get("paymentMethod").toString());
+                    logger.warning("Invalid payment method provided, using default: " + paymentMethod);
                 }
             }
             
@@ -132,14 +134,21 @@ public class OrderController {
     }
 
     @GetMapping("/ordersFromUser/{userId}")
+    @Transactional
     @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<List<Order>> getOrdersByUserId(@PathVariable Long userId) {
+        logger.info("🔍 Backend: Received request for orders from user: " + userId);
         try {
+            logger.info("🔍 Backend: Calling orderService...");
             List<Order> orders = orderService.getOrdersByUserId(userId);
+            logger.info("🔍 Backend: Service returned " + orders.size() + " orders");
+            
+            logger.info("🔍 Backend: Returning orders to client");
             return ResponseEntity.ok(orders);
         } catch (Exception e) {
-            logger.warning("Error getting orders for user: " + e.getMessage());
-            return ResponseEntity.notFound().build();
+            logger.severe("🔍 Backend: Exception: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
         }
     }
 
@@ -203,5 +212,12 @@ public class OrderController {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    // Test endpoint
+    @GetMapping("/test")
+    public ResponseEntity<String> testEndpoint() {
+        logger.info("Test endpoint called successfully");
+        return ResponseEntity.ok("Orders controller is working!");
     }
 }

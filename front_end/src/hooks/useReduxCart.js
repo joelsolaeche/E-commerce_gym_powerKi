@@ -18,23 +18,25 @@ export const useReduxCart = () => {
   const dispatch = useDispatch();
   const cart = useSelector(state => state.cart);
   const reduxAuth = useSelector(state => state.auth);
-  const { user: contextUser } = useUser(); // Get user from context
+  const { user: contextUser, token: contextToken } = useUser(); // Get user and token from context
   
   // Use either context user or redux auth, with context taking priority
-  const isAuthenticated = !!contextUser || reduxAuth.isAuthenticated;
+  const isAuthenticated = (!!contextUser && !!contextToken) || reduxAuth.isAuthenticated;
   const user = contextUser || reduxAuth.user;
   
-  // Get user cart from API if authenticated, otherwise use local state
-  const { data: serverCart, isLoading: isLoadingCart, refetch: refetchCart } = 
-    useGetUserCartQuery(undefined, { 
-      skip: !isAuthenticated,
-      refetchOnMountOrArgChange: true 
-    });
+  // DISABLED: Get user cart from API if authenticated, otherwise use local state
+  // This was causing GET /cart requests without token
+  // const { data: serverCart, isLoading: isLoadingCart, refetch: refetchCart } = 
+  //   useGetUserCartQuery(undefined, { 
+  //     skip: !isAuthenticated,
+  //     refetchOnMountOrArgChange: true 
+  //   });
   
+  // Commenting out this auto-sync to prevent unauthorized requests
   // If server cart data is available, update local state
-  if (serverCart && !isLoadingCart) {
-    dispatch(setCartItems(serverCart));
-  }
+  // if (serverCart && !isLoadingCart) {
+  //   dispatch(setCartItems(serverCart));
+  // }
   
   // Add to cart
   const [addToCartMutation, addToCartResult] = useAddToCartMutation();
@@ -44,7 +46,7 @@ export const useReduxCart = () => {
     if (isAuthenticated) {
       try {
         await addToCartMutation({ productId: product.id, quantity }).unwrap();
-        refetchCart();
+        // refetchCart(); // Disabled for now
         return true;
       } catch (error) {
         console.error("Add to cart error:", error);
@@ -67,7 +69,7 @@ export const useReduxCart = () => {
     if (isAuthenticated) {
       try {
         await updateCartItemMutation({ productId, quantity }).unwrap();
-        refetchCart();
+        // refetchCart(); // Disabled for now
         return true;
       } catch (error) {
         console.error("Update quantity error:", error);
@@ -86,7 +88,7 @@ export const useReduxCart = () => {
     if (isAuthenticated) {
       try {
         await removeFromCartMutation(productId).unwrap();
-        refetchCart();
+        // refetchCart(); // Disabled for now
         return true;
       } catch (error) {
         console.error("Remove from cart error:", error);
@@ -105,7 +107,7 @@ export const useReduxCart = () => {
     if (isAuthenticated) {
       try {
         await clearCartMutation().unwrap();
-        refetchCart();
+        // refetchCart(); // Disabled for now
         return true;
       } catch (error) {
         console.error("Clear cart error:", error);
@@ -157,8 +159,7 @@ export const useReduxCart = () => {
     cart: cart.items,
     total: cart.total,
     itemCount: cart.itemCount,
-    isLoading: isLoadingCart || 
-               addToCartResult.isLoading || 
+    isLoading: addToCartResult.isLoading || 
                updateCartItemResult.isLoading || 
                removeFromCartResult.isLoading || 
                clearCartResult.isLoading || 
@@ -169,7 +170,7 @@ export const useReduxCart = () => {
     removeFromCart,
     clearCart,
     createOrder,
-    refetchCart,
+    // refetchCart, // Disabled for now
     isAuthenticated
   };
 }; 

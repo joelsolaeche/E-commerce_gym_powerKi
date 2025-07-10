@@ -37,16 +37,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Completely disable CSRF protection
+                .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .headers(headers -> headers.frameOptions().disable()) // Disable for H2 console
                 .authorizeHttpRequests(req -> req
-                        // Permit ALL requests to ALL endpoints temporarily
-                        .anyRequest().permitAll()
+                        .requestMatchers("/auth/**", "/api/v1/auth/**", "/api/v1/auth/register", "/api/v1/auth/authenticate").permitAll()
+                        .requestMatchers("/h2-console/**").permitAll() // For H2 database console (development only)
+                        .requestMatchers(HttpMethod.GET, "/products/**", "/api/v1/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/categories/**", "/api/v1/categories/**").permitAll()
+                        .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
                 
-        // Don't use JWT filter or authentication provider for now
         return http.build();
     }
 

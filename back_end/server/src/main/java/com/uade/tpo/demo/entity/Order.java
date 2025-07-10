@@ -33,8 +33,8 @@ public class Order {
     @Column(name = "order_date", nullable = false)
     private Date orderDate;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JsonManagedReference
     private Set<OrderProduct> orderProducts;
 
     @Column(name = "total_amount", nullable = false)

@@ -1,5 +1,6 @@
 package com.uade.tpo.demo.entity;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -33,6 +34,14 @@ public class CartProduct {
 
     @Column(name = "quantity", nullable = false)
     private int quantity;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 
     @Override
     public boolean equals(Object o) {

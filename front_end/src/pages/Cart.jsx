@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { useUser } from '../context/UserContext'
-import { useReduxCart, useReduxProducts } from '../hooks'
 import { toast } from 'react-toastify'
+import config from '../config'
 
 const Cart = ({ setCurrentPage }) => {
   const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart()
-  const { createOrder, isAuthenticated } = useReduxCart()
-  const { refetchProducts } = useReduxProducts()
-  const { user } = useUser()
+  const { user, token } = useUser()
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('TARJETA_DEBITO')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -39,8 +37,8 @@ const Cart = ({ setCurrentPage }) => {
   const confirmCheckout = async () => {
     if (isProcessing) return;
     
-    // Check if we have a user
-    if (!user) {
+    // Check if we have a user and token
+    if (!user || !token) {
       setCheckoutError('Debes iniciar sesión para realizar la compra')
       return
     }
@@ -49,75 +47,71 @@ const Cart = ({ setCurrentPage }) => {
       setIsProcessing(true);
       setCheckoutError('');
       
-      // Simplest possible approach - no tokens, just the user ID
+      // Simplest possible approach - use token from context
       const orderData = {
         userId: user.id,
         paymentMethod: paymentMethod
       };
       
-      console.log("Creating order with the simplest approach for user:", user.id);
+      console.log("Creating order with user:", user.id);
       console.log("Using payment method:", paymentMethod);
       
       // Log items being purchased for debugging
       console.log("Items in cart:");
       cart.forEach(item => {
-        console.log(`- Product ID: ${item.id}, Name: ${item.name}, Quantity: ${item.quantity}, Current Stock: ${item.stockQuantity || 'unknown'}`);
+        console.log(`- ${item.name} x${item.quantity}`);
       });
-      
-      // Direct API call to original endpoint
-      try {
-        const response = await fetch('http://localhost:8080/orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(orderData)
-        });
+
+      const response = await fetch(`${config.API_BASE_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (response.ok) {
+        console.log("Order created successfully!");
         
-        if (response.ok) {
-          console.log("Order created successfully!");
-          
-          // Let's manually test the stock update for each product in the cart
-          console.log("Testing stock updates for each product:");
-          
-          for (const item of cart) {
-            try {
-              // Call our direct stock update endpoint for each item
-              const stockUpdateResponse = await fetch(`http://localhost:8080/products/directUpdateStock/${item.id}/${item.quantity}`, {
-                method: 'POST'
-              });
-              
-              const stockUpdateResult = await stockUpdateResponse.text();
-              console.log(`Manual stock update for product ${item.id}: ${stockUpdateResult}`);
-            } catch (stockError) {
-              console.error(`Error updating stock for product ${item.id}:`, stockError);
-            }
-          }
-          
-          // Refresh product data to update stock quantities
-          await refetchProducts();
-          console.log("Product data refreshed");
-          
-          // Show a success toast notification
-          toast.success('¡Compra realizada con éxito! 🎉');
-          
-          clearCart();
-          setShowCheckoutModal(false);
-          setCurrentPage('catalog');
-        } else {
-          let errorText;
+        // Let's manually test the stock update for each product in the cart
+        console.log("Testing stock updates for each product:");
+        
+        for (const item of cart) {
           try {
-            const errorData = await response.json();
-            console.error("Order creation failed:", errorData);
-            errorText = JSON.stringify(errorData);
-          } catch (e) {
-            errorText = await response.text();
+            // Call our direct stock update endpoint for each item
+            const stockUpdateResponse = await fetch(`${config.API_BASE_URL}/products/directUpdateStock/${item.id}/${item.quantity}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            const stockUpdateResult = await stockUpdateResponse.text();
+            console.log(`Manual stock update for product ${item.id}: ${stockUpdateResult}`);
+          } catch (stockError) {
+            console.error(`Error updating stock for product ${item.id}:`, stockError);
           }
-          setCheckoutError(`Error: ${errorText}`);
         }
-      } catch (apiError) {
-        console.error("API error:", apiError);
-        setCheckoutError(`Error de comunicación con el servidor: ${apiError.message}`);
+        
+        console.log("Product data will be refreshed when navigating back to catalog");
+        
+        // Show a success toast notification
+        toast.success('¡Compra realizada con éxito! 🎉');
+        
+        clearCart();
+        setShowCheckoutModal(false);
+        setCurrentPage('catalog');
+      } else {
+        let errorText;
+        try {
+          const errorData = await response.json();
+          console.error("Order creation failed:", errorData);
+          errorText = JSON.stringify(errorData);
+        } catch (e) {
+          errorText = await response.text();
+        }
+        setCheckoutError(`Error: ${errorText}`);
       }
     } catch (error) {
       console.error('Error during checkout:', error);

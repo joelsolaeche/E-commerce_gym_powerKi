@@ -5,6 +5,7 @@ import {
   useSearchProductsQuery,
   useGetProductsByCategoryQuery,
   useGetProductsByPriceRangeQuery,
+  useGetProductsBySellerQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
@@ -52,6 +53,14 @@ export const useReduxProducts = () => {
     dispatch(setPriceRange({ min: minPrice, max: maxPrice }));
     const { data, isLoading, error } = useGetProductsByPriceRangeQuery({ minPrice, maxPrice });
     return { products: data, isLoading, error };
+  };
+
+  // Get products by seller ID
+  const getProductsBySeller = (sellerId) => {
+    const { data, isLoading, error, refetch } = useGetProductsBySellerQuery(sellerId, { 
+      refetchOnMountOrArgChange: true 
+    });
+    return { products: data, isLoading, error, refetch };
   };
   
   // Set featured products
@@ -233,6 +242,7 @@ export const useReduxProducts = () => {
     searchProducts,
     getProductsByCategory,
     getProductsByPriceRange,
+    getProductsBySeller,
     createProduct,
     updateProduct,
     deleteProduct,

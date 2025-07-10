@@ -55,33 +55,60 @@ const Header = ({ currentPage, setCurrentPage }) => {
             </button>
             
             {user && user.type === 'seller' && (
+              <>
+                <button
+                  onClick={() => handleNavigation('manage-products')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 transform ${
+                    currentPage === 'manage-products'
+                      ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
+                      : 'text-orange-200 hover:text-orange-100 hover:bg-orange-500/20 border border-orange-500/30'
+                  }`}
+                >
+                  💼 Mis Productos
+                </button>
+                <button
+                  onClick={() => handleNavigation('my-sales')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 transform ${
+                    currentPage === 'my-sales'
+                      ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
+                      : 'text-orange-200 hover:text-orange-100 hover:bg-orange-500/20 border border-orange-500/30'
+                  }`}
+                >
+                  💰 Mis Ventas
+                </button>
+              </>
+            )}
+            
+            {user && user.type === 'buyer' && (
               <button
-                onClick={() => handleNavigation('manage-products')}
+                onClick={() => handleNavigation('my-orders')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 transform ${
-                  currentPage === 'manage-products'
+                  currentPage === 'my-orders'
                     ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
                     : 'text-orange-200 hover:text-orange-100 hover:bg-orange-500/20 border border-orange-500/30'
                 }`}
               >
-                💼 Mis Productos
+                📋 Mis Compras
               </button>
             )}
           </nav>          {/* Right side actions */}
           <div className="flex items-center space-x-3">
-            {/* Cart */}
-            <button
-              onClick={() => handleNavigation('cart')}
-              className="relative p-2 text-orange-200 hover:text-orange-100 transition-all duration-200 rounded-lg hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-400/50 transform hover:scale-110"
-            >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l1.5-6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6" />
-              </svg>
-              {getCartItemsCount() > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-medium shadow-lg animate-pulse">
-                  {getCartItemsCount()}
-                </span>
-              )}
-            </button>
+            {/* Cart - Only show for buyers, not sellers */}
+            {user?.type !== 'seller' && (
+              <button
+                onClick={() => handleNavigation('cart')}
+                className="relative p-2 text-orange-200 hover:text-orange-100 transition-all duration-200 rounded-lg hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-400/50 transform hover:scale-110"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l1.5-6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6" />
+                </svg>
+                {getCartItemsCount() > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-medium shadow-lg animate-pulse">
+                    {getCartItemsCount()}
+                  </span>
+                )}
+              </button>
+            )}
 
 
 
@@ -161,15 +188,40 @@ const Header = ({ currentPage, setCurrentPage }) => {
               </button>
               
               {user && user.type === 'seller' && (
+                <>
+                  <button
+                    onClick={() => handleNavigation('manage-products')}
+                    className={`text-left px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-2 transform hover:scale-105 ${
+                      currentPage === 'manage-products'
+                        ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
+                        : 'text-orange-200 hover:text-orange-100 hover:bg-orange-500/20 border border-orange-500/30'
+                    }`}
+                  >
+                    💼 Mis Productos
+                  </button>
+                  <button
+                    onClick={() => handleNavigation('my-sales')}
+                    className={`text-left px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-2 transform hover:scale-105 ${
+                      currentPage === 'my-sales'
+                        ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
+                        : 'text-orange-200 hover:text-orange-100 hover:bg-orange-500/20 border border-orange-500/30'
+                    }`}
+                  >
+                    💰 Mis Ventas
+                  </button>
+                </>
+              )}
+              
+              {user && user.type === 'buyer' && (
                 <button
-                  onClick={() => handleNavigation('manage-products')}
+                  onClick={() => handleNavigation('my-orders')}
                   className={`text-left px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-2 transform hover:scale-105 ${
-                    currentPage === 'manage-products'
+                    currentPage === 'my-orders'
                       ? 'bg-gradient-to-r from-orange-500/80 to-yellow-500/80 text-white shadow-lg border border-orange-400'
                       : 'text-orange-200 hover:text-orange-100 hover:bg-orange-500/20 border border-orange-500/30'
                   }`}
                 >
-                  💼 Mis Productos
+                  📋 Mis Compras
                 </button>
               )}
 

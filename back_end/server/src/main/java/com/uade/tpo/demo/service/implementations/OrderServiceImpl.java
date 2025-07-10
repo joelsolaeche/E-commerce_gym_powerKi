@@ -150,10 +150,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setTotalAmount(totalAmount);
-        logger.info("Total order amount: " + totalAmount);
-
+        logger.info("Total order amount before save: " + order.getTotalAmount());
         // Save the order
         Order savedOrder = orderRepository.save(order);
+        logger.info("Order saved with total amount: " + savedOrder.getTotalAmount());
+
         logger.info("Order saved with ID: " + savedOrder.getId());
         
         // Clear the cart after successful order creation

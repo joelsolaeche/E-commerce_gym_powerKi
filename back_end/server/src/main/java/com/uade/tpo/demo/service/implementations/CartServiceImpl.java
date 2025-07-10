@@ -130,6 +130,22 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
+    public void clearCartProducts(Long cartId) {
+        Cart cart = cartRepository.findById(cartId)
+            .orElseThrow(() -> new EntityNotFoundException("Cart not found"));
+        
+        // Initialize collection to avoid lazy loading issues
+        cart.getCartProducts().size();
+        
+        // Clear all products from cart but keep the cart itself
+        cart.getCartProducts().clear();
+        cartRepository.save(cart);
+        
+        logger.info("Cleared all products from cart " + cartId);
+    }
+
+    @Override
+    @Transactional
     public void deleteCart(Long cartId) {
         Cart cart = cartRepository.findById(cartId)
             .orElseThrow(() -> new EntityNotFoundException("Cart not found"));

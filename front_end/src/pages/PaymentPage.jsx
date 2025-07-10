@@ -2,13 +2,11 @@ import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import { useCart } from '../context/CartContext'
 import { useUser } from '../context/UserContext'
-import { useReduxCart, useReduxProducts } from '../hooks'
+import config from '../config'
 
 const PaymentPage = ({ setCurrentPage }) => {
   const { cart, getCartTotal, clearCart } = useCart()
-  const { user } = useUser()
-  const { createOrder } = useReduxCart()
-  const { refetchProducts } = useReduxProducts()
+  const { user, token } = useUser()
   const [formData, setFormData] = useState({
     cardNumber: '',
     expiryDate: '',
@@ -110,6 +108,10 @@ const PaymentPage = ({ setCurrentPage }) => {
       
       // Ahora procesar la orden real como lo hace el carrito
       try {
+        // Log para depuración: mostrar el carrito antes de enviar la orden
+        console.log('Carrito al momento de comprar:', cart);
+        console.log('Token disponible:', token ? 'Sí' : 'No');
+        
         const orderData = {
           userId: user.id,
           paymentMethod: 'TARJETA_CREDITO' // Ya que se pagó con tarjeta
@@ -117,22 +119,22 @@ const PaymentPage = ({ setCurrentPage }) => {
         
         console.log("Creando orden después del pago exitoso...", orderData)
         
-        // Llamar API para crear la orden
-        const response = await fetch('http://localhost:8080/orders', {
+        // Llamar API para crear la orden usando el token del contexto
+        const response = await fetch(`${config.API_BASE_URL}/orders`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
           },
           body: JSON.stringify(orderData)
         })
         
         if (response.ok) {
           console.log("¡Orden creada exitosamente!")
-          
           // Actualizar stock de productos
           for (const item of cart) {
             try {
-              await fetch(`http://localhost:8080/products/directUpdateStock/${item.id}/${item.quantity}`, {
+              await fetch(`${config.API_BASE_URL}/products/directUpdateStock/${item.id}/${item.quantity}`, {
                 method: 'POST'
               })
               console.log(`Stock actualizado para producto ${item.id}`)
@@ -140,32 +142,27 @@ const PaymentPage = ({ setCurrentPage }) => {
               console.error(`Error actualizando stock para producto ${item.id}:`, stockError)
             }
           }
-          
-          // Refrescar productos y limpiar carrito
-          await refetchProducts()
+          // Limpiar carrito después de éxito
           clearCart()
-          
           toast.success('🎉 ¡Compra completada exitosamente! Tu equipo está listo para el entrenamiento 🔥', { 
             autoClose: 5000 
           })
-          
           // Redirigir al catálogo
           setTimeout(() => {
             setCurrentPage('catalog')
           }, 2000)
-          
         } else {
-          throw new Error('Error al crear la orden')
+          const errorText = await response.text()
+          console.error('Error response:', errorText)
+          throw new Error(`Error al crear la orden: ${response.status} - ${errorText}`)
         }
-        
       } catch (orderError) {
-        console.error('Error creando la orden:', orderError)
-        toast.error('❌ Error al finalizar la compra. Contacta soporte.')
+        toast.error('❌ Error al procesar la orden. Intenta nuevamente.')
+        console.error('Order error:', orderError)
       }
-      
     } catch (error) {
+      toast.error('❌ Error al procesar el pago. Intenta nuevamente.')
       console.error('Payment error:', error)
-      toast.error('❌ Error al procesar el pago. ¡Verifica los datos de tu tarjeta!')
     } finally {
       setIsProcessing(false)
     }
@@ -633,4 +630,4 @@ const PaymentPage = ({ setCurrentPage }) => {
   )
 }
 
-export default PaymentPage 
+export default PaymentPage

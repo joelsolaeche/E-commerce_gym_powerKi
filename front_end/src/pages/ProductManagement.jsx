@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useUser } from '../context/UserContext'
 import { useReduxProducts, useReduxCategories } from '../hooks'
+import { useUser } from '../context/UserContext'
 import { toast } from 'react-toastify'
 
 // Utility function to process image URLs
@@ -26,21 +26,51 @@ const processImageUrl = (url) => {
 };
 
 const ProductManagement = ({ setCurrentPage }) => {
-  const { user } = useUser()
+  const { user, token } = useUser()
+  
   const {
-    products: productsData = [],
+    products: allProducts = [],
+    isLoading: isProductsLoading,
     createProduct,
     updateProduct,
     deleteProduct,
-    refetchProducts,
-    isLoading: productsLoading
+    refetchProducts
   } = useReduxProducts()
-  const { 
-    categories: categoryData = [], 
-    isLoading: categoriesLoading 
+  
+  const {
+    categories: categoryData = [],
+    isLoading: isCategoriesLoading
   } = useReduxCategories()
   
-  const [products, setProducts] = useState([])
+  const categories = categoryData
+  
+  // Filter products to show only those created by the current seller
+  const products = allProducts.filter(product => {
+    if (!user?.id) return false
+    
+    // Check direct sellerId property
+    if (product.sellerId && product.sellerId === user.id) {
+      return true
+    }
+    
+    // Check nested seller object
+    if (product.seller && product.seller.id === user.id) {
+      return true
+    }
+    
+    return false
+  })
+  console.log('📦 All products:', allProducts.length)
+  console.log('🎯 Filtered products for seller:', products.length)
+  if (allProducts.length > 0) {
+    console.log('📋 Sample product structure:', {
+      id: allProducts[0]?.id,
+      name: allProducts[0]?.name,
+      sellerId: allProducts[0]?.sellerId,
+      seller: allProducts[0]?.seller,
+      allKeys: Object.keys(allProducts[0] || {})
+    })
+  }
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [formData, setFormData] = useState({
@@ -54,33 +84,6 @@ const ProductManagement = ({ setCurrentPage }) => {
   })
   const [imagePreview, setImagePreview] = useState(null)
   
-  // Debug categories data
-  useEffect(() => {
-    console.log("Category data received:", categoryData)
-  }, [categoryData])
-  
-  // Update products when data changes
-  useEffect(() => {
-    if (productsData) {
-      // Filter products to show only the current seller's products
-      const sellerProducts = productsData.filter(product => 
-        product.sellerId === user?.id
-      )
-      setProducts(sellerProducts)
-      console.log("Products data received:", sellerProducts)
-    }
-  }, [productsData, user?.id])
-  
-  // Refresh product data when component mounts
-  useEffect(() => {
-    const loadData = async () => {
-      console.log("ProductManagement component - refreshing product data");
-      await refetchProducts();
-    };
-    
-    loadData();
-  }, [refetchProducts]);
-  
   // Update image preview when image URL changes
   useEffect(() => {
     if (formData.image) {
@@ -91,22 +94,6 @@ const ProductManagement = ({ setCurrentPage }) => {
       setImagePreview(null);
     }
   }, [formData.image]);
-  
-  // Map categories for dropdown
-  const categories = categoryData && categoryData.length > 0 
-    ? categoryData.map(category => ({
-        id: category.id,
-        description: category.description
-      }))
-    : [
-        // Fallback categories if API fails
-        { id: 1, description: "Suplementos" },
-        { id: 2, description: "Proteínas" },
-        { id: 3, description: "Accesorios" },
-        { id: 4, description: "Vitaminas" },
-        { id: 5, description: "Ropa" },
-        { id: 6, description: "Equipamiento" }
-      ]
   
   if (!user || user.type !== 'seller') {
     return (
@@ -228,7 +215,7 @@ const ProductManagement = ({ setCurrentPage }) => {
       if (result.success) {
         console.log("Product saved successfully:", result.data)
         toast.success(editingProduct ? 'Producto actualizado correctamente' : 'Producto creado correctamente')
-        await refetchProducts()
+        await refetchProducts()  // Refresh the products list
         
         // Reset form
         setFormData({
@@ -286,7 +273,7 @@ const ProductManagement = ({ setCurrentPage }) => {
               if (result.success) {
                 toast.success('Producto eliminado correctamente');
                 console.log("Product deleted successfully");
-                await refetchProducts();
+                await refetchProducts();  // Refresh the products list
               } else {
                 console.error("Failed to delete product:", result.error);
                 toast.error(`Error: ${result.error || 'Failed to delete product'}`);
@@ -351,7 +338,7 @@ const ProductManagement = ({ setCurrentPage }) => {
         </div>
         
         {/* Loading indicator */}
-        {(productsLoading || categoriesLoading) && (
+        {(isProductsLoading || isCategoriesLoading) && (
           <div className="flex justify-center items-center my-8">
             <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500"></div>
             <span className="ml-3 text-lg font-medium text-orange-500">Cargando...</span>

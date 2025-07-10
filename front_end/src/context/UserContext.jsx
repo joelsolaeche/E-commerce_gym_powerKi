@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { useDispatch } from 'react-redux'
+import { setCredentials, logout as reduxLogout } from '../store/slices/authSlice'
 import config from '../config'
 
 const UserContext = createContext()
@@ -12,19 +14,30 @@ export const useUser = () => {
 }
 
 export const UserProvider = ({ children }) => {
+  const dispatch = useDispatch()
   const [user, setUser] = useState(null)
-  const [users, setUsers] = useState([
-    // Power Ki Gym demo users
-    { id: 1, username: 'admin', email: 'admin@powerkigym.com', password: 'admin123', firstName: 'Carlos', lastName: 'Gimnasio', type: 'seller' },
-    { id: 2, username: 'buyer1', email: 'athlete@powerkigym.com', password: 'buyer123', firstName: 'Ana', lastName: 'Atleta', type: 'buyer' }
-  ])
+  const [token, setToken] = useState(null)
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
 
-  // No longer initialize from localStorage for security
-  // User will need to log in again after page refresh
+  // Sincronizar token con user y Redux
+  useEffect(() => {
+    if (user && user.token) {
+      setToken(user.token)
+      // Sincronizar con Redux
+      dispatch(setCredentials({ user, token: user.token }))
+      console.log('🔄 Sincronizando usuario y token con Redux:', { user: user?.email, hasToken: !!user.token })
+    } else {
+      setToken(null)
+      // Limpiar Redux
+      dispatch(reduxLogout())
+      console.log('🔄 Limpiando estado Redux')
+    }
+  }, [user, dispatch])
 
-  const login = async (username, password) => {
+  const login = async (email, password) => {
+    setIsAuthenticating(true)
     try {
-      console.log('Attempting login with:', username);
+      console.log('Attempting login with:', email);
       
       // Make API call to backend authentication endpoint
       const response = await fetch(`${config.API_BASE_URL}/api/v1/auth/authenticate`, {
@@ -33,18 +46,19 @@ export const UserProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: username, // Using username as email for simplicity
+          email: email, // Using email directly
           password: password
         })
       })
 
       if (!response.ok) {
         console.error('Login failed with status:', response.status);
+        setIsAuthenticating(false)
         return false;
       }
 
       const data = await response.json()
-      console.log('Login response:', data);
+      console.log('Login response JSON:', data); // <--- LOG explícito
       
       // Get user type/role from backend response
       const userType = data.role === 'ADMIN' ? 'seller' : 'buyer'
@@ -52,28 +66,30 @@ export const UserProvider = ({ children }) => {
       // Create a user object with the data from the backend
       const loggedInUser = {
         id: data.userId,
-        username: username,
-        email: username,
-        firstName: data.firstName || username.split('@')[0], // Use firstName from response, fallback to email username
+        username: email,
+        email: email,
+        firstName: data.firstName || email.split('@')[0], // Use firstName from response, fallback to email username
         lastName: data.lastName || (userType === 'seller' ? 'Vendedor' : 'Atleta'), // Use lastName from response with fallback
         role: data.role,
         type: userType, // Add type property for compatibility with Header component
-        token: data.accessToken
+        token: data.access_token // <--- corregido
       }
       
       console.log('Setting user with role:', loggedInUser.role);
       
       // Store user in state only (no localStorage for security)
       setUser(loggedInUser);
-      
+      setIsAuthenticating(false)
       return true;
     } catch (error) {
       console.error('Login error:', error)
+      setIsAuthenticating(false)
       return false
     }
   }
 
   const register = async (userData) => {
+    setIsAuthenticating(true)
     try {
       console.log('Registering user:', userData);
       
@@ -101,6 +117,7 @@ export const UserProvider = ({ children }) => {
 
       if (!response.ok) {
         const errorText = await response.text();
+        setIsAuthenticating(false)
         console.error('Registration failed with error:', errorText);
         
         // Check if it's an email already exists error
@@ -123,15 +140,15 @@ export const UserProvider = ({ children }) => {
         lastName: userData.lastName,
         role: data.role,
         type: userData.type,
-        token: data.accessToken
+        token: data.access_token // <--- corregido
       }
       
       // Store user in state only (no localStorage for security)
-      setUsers([...users, newUser]);
       setUser(newUser);
-      
+      setIsAuthenticating(false)
       return true;
     } catch (error) {
+      setIsAuthenticating(false)
       console.error('Registration error:', error);
       return Promise.reject(error); // Propagate the error to the caller
     }
@@ -139,12 +156,18 @@ export const UserProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    setToken(null);
+    setIsAuthenticating(false)
+    // Limpiar Redux también
+    dispatch(reduxLogout())
+    console.log('🚪 Logout completo - estado limpiado en contexto y Redux')
     // No need to clear localStorage as we're not using it for security
   }
 
   const value = {
     user,
-    users,
+    token,
+    isAuthenticating,
     login,
     register,
     logout

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { useReduxProducts } from '../hooks'
 import { toast } from 'react-toastify'
+import { useUser } from '../context/UserContext'
 
 const ProductCatalog = ({ setCurrentPage }) => {
   const { addToCart } = useCart()
@@ -11,6 +12,7 @@ const ProductCatalog = ({ setCurrentPage }) => {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [currentSlide, setCurrentSlide] = useState(0)
   const { products = [], isLoading } = useReduxProducts()
+  const { user, token, isAuthenticating } = useUser()
   const featuredProducts = products.slice(0, 4)
   
   const categories = ['all', ...new Set(products.map(p => p.category?.description || p.category))]
@@ -61,8 +63,14 @@ const ProductCatalog = ({ setCurrentPage }) => {
     return matchesSearch && matchesCategory && matchesPrice
   })
   const handleAddToCart = (product) => {
-    const cartItem = { ...product, stock: product.stockQuantity }
-    addToCart(cartItem)
+    // Prevent sellers from adding items to cart
+    if (user?.type === 'seller') {
+      toast.info('Los vendedores no pueden agregar productos al carrito. ¡Enfócate en vender tu arsenal!')
+      return
+    }
+    
+    // Pass only the product ID, not the entire product object
+    addToCart(product.id, 1)
   }
 
   const ProductModal = ({ product, onClose }) => {
@@ -116,14 +124,19 @@ const ProductCatalog = ({ setCurrentPage }) => {
                     handleAddToCart(product)
                     onClose()
                   }}
-                  disabled={product.stockQuantity === 0}
+                  disabled={product.stockQuantity === 0 || user?.type === 'seller'}
                   className={`w-full py-5 rounded-xl font-bold transition-all duration-200 text-lg border-2 ${
-                    product.stockQuantity > 0
+                    product.stockQuantity > 0 && user?.type !== 'seller'
                       ? 'text-white shadow-lg hover:shadow-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400 border-orange-400'
                       : 'cursor-not-allowed bg-gray-700 text-gray-400 border-gray-600'
                   }`}
                 >
-                  {product.stockQuantity > 0 ? '🛒 Agregar al Carrito' : 'Sin Stock'}
+                  {user?.type === 'seller' 
+                    ? '💰 Eres Vendedor - No puedes comprar' 
+                    : product.stockQuantity > 0 
+                      ? '🛒 Agregar al Carrito' 
+                      : 'Sin Stock'
+                  }
                 </button>
               </div>
             </div>
@@ -131,9 +144,15 @@ const ProductCatalog = ({ setCurrentPage }) => {
       </div>
     )
   }
+  // Mostrar loading si se está autenticando
+  if (isAuthenticating) {
+    return <div className="text-center py-16 text-gray-600">Cargando autenticación...</div>
+  }
+
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">        {/* Hero Banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        {/* Hero Banner */}
         <div className="mb-10">
           <div className="relative bg-gradient-to-r from-orange-500 via-orange-600 to-yellow-500 rounded-3xl overflow-hidden shadow-2xl" style={{ background: 'linear-gradient(135deg, #FF6F00 0%, #FFA500 50%, #FFD700 100%)' }}>
             {/* Background Pattern */}
@@ -330,18 +349,23 @@ const ProductCatalog = ({ setCurrentPage }) => {
                             toast.success(`${product.name} agregado al carrito!`);
                           }
                         }}
-                        disabled={product.stockQuantity === 0 || index !== currentSlide}
+                        disabled={product.stockQuantity === 0 || index !== currentSlide || user?.type === 'seller'}
                         className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 text-lg ${
-                          product.stockQuantity > 0 && index === currentSlide
+                          product.stockQuantity > 0 && index === currentSlide && user?.type !== 'seller'
                             ? 'text-white shadow-lg hover:shadow-xl'
                             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                         }`}
-                        style={product.stockQuantity > 0 && index === currentSlide ? {
+                        style={product.stockQuantity > 0 && index === currentSlide && user?.type !== 'seller' ? {
                           background: 'linear-gradient(135deg, #FF6F00 0%, #FFA500 100%)',
                           transition: 'all 0.2s ease'
                         } : {}}
                       >
-                        {product.stockQuantity > 0 ? '🛒 Agregar al Carrito' : 'Sin Stock'}
+                        {user?.type === 'seller' 
+                          ? '💰 Modo Vendedor' 
+                          : product.stockQuantity > 0 
+                            ? '🛒 Agregar al Carrito' 
+                            : 'Sin Stock'
+                        }
                       </button>
                     </div>
                   </div>
@@ -461,14 +485,24 @@ const ProductCatalog = ({ setCurrentPage }) => {
                   {product.description.substring(0, 80)}...
                 </p>                  <button
                   onClick={() => handleAddToCart(product)}
-                  disabled={product.stockQuantity === 0}
+                  disabled={
+                    product.stockQuantity === 0 ||
+                    !user ||
+                    !token ||
+                    user?.type === 'seller'
+                  }
                   className={`w-full py-3 rounded-lg font-semibold transition-all duration-200 text-sm ${
-                    product.stockQuantity > 0
+                    product.stockQuantity > 0 && user && token && user?.type !== 'seller'
                       ? 'text-white shadow-md hover:shadow-lg bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400'
                       : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  {product.stockQuantity > 0 ? 'Agregar al Carrito' : 'Sin Stock'}
+                  {user?.type === 'seller' 
+                    ? '💰 Modo Vendedor'
+                    : product.stockQuantity > 0 
+                      ? 'Agregar al Carrito' 
+                      : 'Sin Stock'
+                  }
                 </button>
               </div>
             </div>

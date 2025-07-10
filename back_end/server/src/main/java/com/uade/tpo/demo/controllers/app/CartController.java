@@ -2,6 +2,9 @@ package com.uade.tpo.demo.controllers.app;
 
 import jakarta.persistence.EntityNotFoundException;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.uade.tpo.demo.dto.AddProductToCartRequest;
+import com.uade.tpo.demo.dto.UpdateCartItemRequest;
 import com.uade.tpo.demo.entity.Cart;
 import com.uade.tpo.demo.service.interfaces.CartService;
 
@@ -58,23 +62,15 @@ public class CartController {
         }
     }
 
-    @PutMapping("/update/{productId}")
+    @PostMapping("/update")
     @PreAuthorize("hasAuthority('USER') or hasAuthority('ADMIN')")
-    public ResponseEntity<String> updateCartItem(@PathVariable Long productId, @RequestBody Integer quantity) {
+    public ResponseEntity<String> updateCartItemQuantity(@RequestBody UpdateCartItemRequest request) {
         try {
-            // Get cart ID from authentication or request
-            // For now, we'll use the first cart available
-            List<Cart> carts = cartService.getAllCarts();
-            if (carts.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No cart found");
-            }
-            Long cartId = carts.get(0).getId();
+            // Remove the product from cart and add it with new quantity
+            cartService.removeProductFromCart(request.getCartId(), request.getProductId());
+            cartService.addProductToCart(request.getCartId(), request.getProductId(), request.getQuantity());
             
-            // Remove and add with new quantity
-            cartService.removeProductFromCart(cartId, productId);
-            cartService.addProductToCart(cartId, productId, quantity);
-            
-            return ResponseEntity.ok("Cart item updated");
+            return ResponseEntity.ok("Cart item quantity updated");
         } catch (EntityNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (RuntimeException e) {
@@ -117,5 +113,23 @@ public class CartController {
             cartService.deleteCart(carts.get(0).getId());
         }
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/clear")
+    @PreAuthorize("hasAuthority('USER') or hasAuthority('ADMIN')")
+    public ResponseEntity<String> clearCartProducts(@RequestBody Map<String, Long> request) {
+        try {
+            Long cartId = request.get("cartId");
+            if (cartId == null) {
+                return ResponseEntity.badRequest().body("Cart ID is required");
+            }
+            
+            cartService.clearCartProducts(cartId);
+            return ResponseEntity.ok("Cart products cleared successfully");
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error clearing cart: " + e.getMessage());
+        }
     }
 }

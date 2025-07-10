@@ -1,16 +1,25 @@
 import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
+import { toast } from 'react-toastify';
+import config from '../config'
 
 const ProductModal = ({ product, onClose }) => {
   const { addToCart } = useCart();
+  const { user } = useUser();
   
-  if (!product) return null;
-
   const handleAddToCart = () => {
-    const cartItem = { ...product, stock: product.stockQuantity };
-    if (addToCart(cartItem)) {
-      onClose();
+    // Prevent sellers from adding items to cart
+    if (user?.type === 'seller') {
+      toast.info('Los vendedores no pueden agregar productos al carrito. ¡Enfócate en vender tu arsenal!')
+      return
     }
+    
+    // Pass only the product ID, not the entire product object
+    addToCart(product.id, 1);
+    onClose();
   };
+
+  if (!product) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 backdrop-blur-sm" style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.9) 100%)' }}>
@@ -85,14 +94,19 @@ const ProductModal = ({ product, onClose }) => {
               
               <button
                 onClick={handleAddToCart}
-                disabled={product.stockQuantity === 0}
+                disabled={product.stockQuantity === 0 || user?.type === 'seller'}
                 className={`w-full py-5 rounded-xl font-bold transition-all duration-200 text-lg border-2 ${
-                  product.stockQuantity > 0
+                  product.stockQuantity > 0 && user?.type !== 'seller'
                     ? 'text-white shadow-lg hover:shadow-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400 border-orange-400'
                     : 'cursor-not-allowed bg-gray-700 text-gray-400 border-gray-600'
                 }`}
               >
-                {product.stockQuantity > 0 ? '🛒 Agregar al Carrito' : 'Sin Stock'}
+                {user?.type === 'seller' 
+                  ? '💰 Eres Vendedor - No puedes comprar' 
+                  : product.stockQuantity > 0 
+                    ? '🛒 Agregar al Carrito' 
+                    : 'Sin Stock'
+                }
               </button>
             </div>
           </div>
@@ -102,4 +116,4 @@ const ProductModal = ({ product, onClose }) => {
   );
 };
 
-export default ProductModal; 
+export default ProductModal;
